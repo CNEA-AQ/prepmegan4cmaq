@@ -51,7 +51,7 @@ program prepmegan4cmaq
   call build_CT3(grid,proj,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file,nl_tree_frac_file,tp_tree_frac_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  !call build_LAI(grid,proj,lai_file)
+  call build_LAIv(grid,proj,laiv_files)
   
   !`MEGAN_LDF` (*Light Dependence Fractions*)
  
@@ -131,7 +131,7 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
    !real, allocatable :: crop(:,:),shrub(:,:),grass(:,:),tree(:,:),nl_tree(:,:),trop_tree(:,:),bl_tree(:,:),laiv(:,:)
    real, allocatable :: CTS(:,:,:)
    integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
-   character(len=6) :: outfile
+   character(len=10) :: outfile
    character(len=25),allocatable :: var_list(:),var_desc(:)
    character(len=200),allocatable :: file_list(:)
    integer :: nvars
@@ -148,7 +148,6 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
    
    !Levanto netcdf input files
    do k=1,nvars
-        print*,"k=",k
        call check(nf90_open( trim(file_list(k)), nf90_write, ncid   ))
        call check(   nf90_inq_varid(ncid,'Band1', var_id     ))
        call check(   nf90_get_var(ncid,  var_id , CTS(:,:,k)  ))
@@ -251,19 +250,17 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
 
 end subroutine build_CT3
 
-subroutine build_LAI(g,p,laivfile)
+subroutine build_LAIv(g,p,laivfile)
    implicit none
    type(grid_type) ,intent(in) :: g
    type(proj_type) ,intent(in) :: p
    character(len=200) :: laivfile
    real, allocatable :: LAIv(:,:,:)
    integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
-   character(len=6) :: outfile
-   character(len=25),allocatable :: var_list(:),var_desc(:)
-   character(len=200),allocatable :: file_list(:)
+   character(len=10) :: outfile
    integer :: nvars
    character(len=2)::kk
-
+   real :: missing_value
    outfile='LAI3.nc'
    nvars=12
 
@@ -271,15 +268,15 @@ subroutine build_LAI(g,p,laivfile)
 
    !Levanto netcdf input files
    do k=1,nvars
-        print*,"k=",k
-       call check(nf90_open( trim(file_list(k)), nf90_write, ncid   ))
-       call check(   nf90_inq_varid(ncid,'Band1', var_id     ))
-       call check(   nf90_get_var(ncid,  var_id , CTS(:,:,k)  ))
-       call check(nf90_close(ncid                             ))
+       write(kk,'(I0.2)') k
+       call check(nf90_open(trim(laivfile)//kk//".nc", nf90_write, ncid ))
+            call check(   nf90_inq_varid(ncid,'Band1', var_id ))
+            call check(   nf90_get_var(ncid, var_id , LAIv(:,:,k)  ))
+            where (LAIv < 0.0 )
+                    LAIv=0.0
+            endwhere
+       call check(nf90_close(ncid ))
    enddo
-
-   var_list =(/ "shrub_frac             ","crop_frac              ","grass_frac             ","nl_tree_frac           ","trop_tree_frac         ","bl_tree_frac           "/)
-   var_desc =(/ "shrub fraction         ","crop fraction          ","grass fraction         ","needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction"/) 
    ! Create the NetCDF file
    call check(nf90_create(outFile, NF90_CLOBBER, ncid))
        ! Defino dimensiones
@@ -297,12 +294,11 @@ subroutine build_LAI(g,p,laivfile)
        call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
 
        do k=1, nvars
-       write(kk,'I02'),k
-
+         write(kk,'(I0.2)') k
          call check(nf90_def_var(ncid, "LAI"//kk ,NF90_FLOAT , [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) !
          call check(nf90_put_att(ncid, var_id,"units"    , "nondimension    " ))
-         call check(nf90_put_att(ncid, var_id,"long_name", trim(var_list(k))  ))
-         call check(nf90_put_att(ncid, var_id,"var_desc" , trim(var_desc(k))  ))
+         call check(nf90_put_att(ncid, var_id,"long_name",  "LAI"//kk         ))
+         call check(nf90_put_att(ncid, var_id,"var_desc" ,  "LAI"//kk         ))
        end do
     call check(nf90_enddef(ncid))
     !End NetCDF define mode
@@ -310,16 +306,16 @@ subroutine build_LAI(g,p,laivfile)
     !Abro NetCDF outFile
     call check(nf90_open(outFile, nf90_write, ncid       ))
      do k=1, nvars       
-     write(kk,'I0.2'),k
+       write(kk,'(I0.2)') k
        call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
-       call check(nf90_put_var(ncid, var_id, CTS(:,:,6)*(1-CTS(:,:,4)) *(1-CTS(:,:,5)) ))
+       call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
+     enddo
        !TFLAG:
        call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
        call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
 
-
-
-
+    call check(nf90_close( ncid ))
+    !Cierro NetCDF outFile
 
 end subroutine
 

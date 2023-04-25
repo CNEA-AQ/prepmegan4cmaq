@@ -64,7 +64,7 @@ GRIDNAME="Argentina"
 
 Note that the variables must be adjusted to match the appropriate values for your system.
 
-Then execute `prepmegan4cmaq.exe`:
+Then execute `prepmegan4cmaq.sh`:
 
 `> ./prepmegan4cmaq.sh` 
 
@@ -72,6 +72,11 @@ This script will regrid all the input files using GDAL and then execute the `pre
 
 Please feel free to contact the developer if you have any issues or suggestions.
 
+
+## Planned future improvements:
+ + [ ] EFP support (For LDF and EFS)
+ + [ ] BDNP support
+ + [ ] Roboust GRIDDESC reader
 
 <!--
 preprocessor -> cantype, optional LAI, and optional soil csv files -> TXT2IOAPI
