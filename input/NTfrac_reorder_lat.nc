@@ -1,0 +1,1 @@
+/home/usuario/data/megan_cmaq_uci_bai_inp_data/NTfrac_reorder_lat.nc

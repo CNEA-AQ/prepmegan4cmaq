@@ -1,0 +1,1 @@
+/home/usuario/data/megan_wrf_inp_data/laiv200310_30sec.nc
