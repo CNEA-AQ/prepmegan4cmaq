@@ -9,26 +9,15 @@
 
 ## Get MEGAN input data:
 
+All the data required to run this pre-procesor is freely available from [UCI BAI webpage](https://bai.ess.uci.edu/megan/data-and-code/) and has been produced by the team of Alex Guenther.
+
 Data required:
 + Leaf Area Index / Vegetation Cover Fraction (LAIv)
 + Growth Form (fraction): crops, grass, shurbs, tree.
 + Canopy type (fraction): tropical trees, needleleaf trees.
-<!-- WRF classes:
-   - crops	crop30s_reorder.nc	- herbs
-   - grass	gras30s_reorder.nc 	
-   - shurbs	shrb30s_reorder.nc	- shurbs
-   - tree	tree30s_reorder.nc	- trees: broadleaf & needleleaf
-    + tropical
-    + boradleaf
-    + needleleaf
--->
 + Ecotype
-<!--+ BDSNP (*optional*): for soil NO algorithm.
-   - Fertilizer
-   - Land Fraction
-   - Climate data	
-   - Nitrogen deposition data
--->
++ Soil data (for BDSNP soil NO algorithm): Fertilizer, Land Fraction, Climate data (arid/non-arid), Nitrogen deposition.
+
 
 ## Build
 Edit the Makefile to set the compiler and path to NetCDF lib and include files. Check your `nc-config --libdir` and `nc-config --includedir`.

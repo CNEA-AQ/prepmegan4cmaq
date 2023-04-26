@@ -1,6 +1,9 @@
 #!/bin/bash
-export LC_NUMERIC="en_US.UTF-8"
 #------------------------------------------------
+#author: Ramiro A. Espada. April, 2023.
+#------------------------------------------------
+export LC_NUMERIC="en_US.UTF-8"
+
 #Input-Data:
 start_date="2019-01-01"	#"%Y-%m-%d %H"
   end_date="2019-01-01"	#"%Y-%m-%d %H"
@@ -11,26 +14,28 @@ GRIDDESC_file="./GRIDDESC_example"
 GRIDNAME="Argentina"
 
 #Input Files:
-    crop_frac_file='./input/GF3aCrop.nc' 		  #frac of crop cover       - file path
-   grass_frac_file='./input/GF3aGrass.nc'		  #frac of grass cover      - file path
-   shrub_frac_file='./input/GF3aShrub.nc'		  #frac of shrubs cover     - file path
-    tree_frac_file='./input/GF3aTree.nc'		  #frac of trees cover      - file path
+      laiv_files='./input/laiv2003'			#(LAIv=LAI/VEGCOVER) file path just the name before month indicator!
 
-    nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'	  #frac of needleleaf trees - file path
- tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'	  #frac of tropical   trees - file path
-# bl_tree_frac_file='./input/BLfrac_reorder_lat.nc'	  #frac of broadleaf  trees - file_path
-      ecotype_file='./input/EVT3b.nc'			  #(not so clear what it represents) - file_path
-        laiv_files='./input/laiv2003'			  #(LAIv=LAI/VEGCOVER) file path just the name before month indicator!
-#	  lai_file='./input/lai*'
-#      veg_cov_file='./input/veg_cov*3'
-#       wrfout_file='./input/wrfout_$YYYY$MM$DD_00:00:00_d01.nc'
+      cropf_file='./input/GF3aCrop.nc' 		        #frac of crop cover       - file path
+     grassf_file='./input/GF3aGrass.nc'		        #frac of grass cover      - file path
+     shrubf_file='./input/GF3aShrub.nc'		        #frac of shrubs cover     - file path
+      treef_file='./input/GF3aTree.nc'		        #frac of trees cover      - file path
+
+   nl_treef_file='./input/NTfrac_reorder_lat.nc'	#frac of needleleaf trees - file path
+   tp_treef_file='./input/tropfrac_reorder_lat.nc'	#frac of tropical   trees - file path
+#  bl_treef_file='./input/BLfrac_reorder_lat.nc'	#frac of broadleaf  trees - file_path
+
+    ecotype_file='./input/EVT3b.nc'			#(not so clear what it represents) - file_path
+
 #For BDPN:
-#         arid_file=''
-#      nonarid_file=''
-#     landtype_file=''
-#fertilization_file=''
-#nitrogen_depo_file=''
-
+       arid_file='input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'
+    nonarid_file='input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'
+   landtype_file='input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'
+      fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'
+nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'
+#       lai_file='./input/lai*'
+#   veg_cov_file='./input/veg_cov*3'
+#    wrfout_file='./input/wrfout_$YYYY$MM$DD_00:00:00_d01.nc'
 #-------------------------------------------------
 #(0) Get grid & proj parameters from GRIDDESC:
 read projName xorig yorig dx dy nx ny nz <<< $( sed -n "/${GRIDNAME}/{n;p;q}" "$GRIDDESC_file" )
@@ -77,13 +82,13 @@ start_date='${start_date}',
 
     griddesc_file='${GRIDDESC_file}'
 
-    crop_frac_file='./tmp_grids/crop.nc', 
-   grass_frac_file='./tmp_grids/grass.nc',
-   shrub_frac_file='./tmp_grids/shrub.nc',
-    tree_frac_file='./tmp_grids/tree.nc', 
- nl_tree_frac_file='./tmp_grids/nl_tree.nc',		
- tp_tree_frac_file='./tmp_grids/tp_tree.nc',		
- bl_tree_frac_file='./tmp_grids/bl_tree.nc',		
+    cropf_file='./tmp_grids/crop.nc', 
+   grassf_file='./tmp_grids/grass.nc',
+   shrubf_file='./tmp_grids/shrub.nc',
+    treef_file='./tmp_grids/tree.nc', 
+ nl_treef_file='./tmp_grids/nl_tree.nc',		
+ tp_treef_file='./tmp_grids/tp_tree.nc',		
+ bl_treef_file='./tmp_grids/bl_tree.nc',		
 
       ecotype_file='./tmp_grids/ecotype.nc',				
 
