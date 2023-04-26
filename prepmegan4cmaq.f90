@@ -51,37 +51,6 @@ program prepmegan4cmaq
   
   !`MEGAN_LAI` (Leaf Area Index).
   !call build_LAIv(grid,proj,laiv_files)
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   !!`MEGAN_LDF` (*Light Dependence Fractions*)
   !call build_LDF()
@@ -89,22 +58,14 @@ program prepmegan4cmaq
   !!`MEGAN_EFS` (emission factors).
   !call build_EFS()
 
+  !!Archivos para BDSNP: (Solo es regrillar netcdf):
+  !call BDSNP_AFILE()   !int Arid (0/1) , int Non-Arid (0/1)
 
-!Archivos para BDSNP: Solo es armar el netcdf:
-  !call BDSNP_AFILE()
-!+ BDSNP_AFILE: arid flag. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_AFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It identifies climatically arid grid cells with 1s and 0s.
-!+ BDSNP_NAFILE: nonarid flag. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_NAFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It identifies climatically non-arid grid cells with 1s and 0s.
+  !call BDSNP_LFILE()   !int Land types (1:24)
 
-  !call BDSNP_LFILE()
-!+ BDSNP_LFILE: landfile type. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_LFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It assigns each grid cell to one of 24 land types.
+  !call BDSNP_FFILE()   !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
 
-  !call BDSNP_FFILE()
-!+ BDSNP_FFILE: fertilizer reservoir. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_FFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It contains daily fertilizer information in ng N/m2 using 366 variables.
-
-  !call BDSNP_NFILE()
-!+ BDSNP_NFILE: nitrogen deposition. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_NFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It contains monthly average nitrogen deposition values in ng/m2/s using 12 variables.
-
-
+  !call BDSNP_NFILE()   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
 
 print*, "========================================="
 print*, " prepmegan4cmaq: Completed successfully"
@@ -417,19 +378,22 @@ contains
   !     """
   !     Function to build the intermediate query
   !     """
-  !     query_str = f"CREATE TABLE 'Intermediate{growthform}EcoEF' AS \
-  !                   SELECT Speciation{growthform}.EcoTypeID, "
-  !     for i in range(ef_s,ef_e+1,1):
-  !         q = f"Sum([EF{i}]*[{growthform}Specfrac]) AS {growthform}EcoEF{i}, "
-  !         query_str+=q
-  !     for j in range(ldf_s,ldf_e+1,1):
-  !         q2 = f"Sum([LDF{j}]*[{growthform}Specfrac]) AS {growthform}EcoLDF{j}, "
-  !         query_str+=q2
-  !     query_str = query_str.rstrip(', ')
-  !     query_str+=f" FROM Speciation{growthform} \
-  !                  INNER JOIN EF ON Speciation{growthform}.VegID = EF.VegID \
-  !                  GROUP BY Speciation{growthform}.EcoTypeID;"
-  !     return query_str
+  !    query_str = f"CREATE TABLE 'Intermediate{growthform}EcoEF' AS \
+  !                  SELECT Speciation{growthform}.EcoTypeID, "
+  !    for i in range(ef_s,ef_e+1,1):
+  !        q = f"
+  !        Sum( [EF{i}] * [{growthform}Specfrac] ) AS {growthform}EcoEF{i}, "
+  !        query_str+=q
+  !    for j in range(ldf_s,ldf_e+1,1):
+  !        q2 = f"Sum([LDF{j}]*[{growthform}Specfrac]) AS {growthform}EcoLDF{j}, "
+  !        query_str+=q2
+  
+
+  !    query_str = query_str.rstrip(', ')
+  !    query_str+=f" FROM Speciation{growthform} \
+  !                 INNER JOIN EF ON Speciation{growthform}.VegID = EF.VegID \
+  !                 GROUP BY Speciation{growthform}.EcoTypeID;"
+  !    return query_str
   ! 
   ! 
   ! def Ecotype_Tree_EF(conn, EFa=1, EFz=18, LDFa=3, LDFz=6):
@@ -460,7 +424,6 @@ contains
   !        +([HerbFrac]*[HerbEcoLDF{j}])\
   !        +([ShrubFrac]*[ShrubEcoLDF{j}]))) AS LDF{j}, "
   !        query_str += q2
-  !
   !    query_str = query_str.rstrip(', ')
   !    query_str += " FROM ((((GridGrowthForm INNER JOIN GridEcotype ON GridGrowthForm.gridID = GridEcotype.gridID)  \
   !    INNER JOIN IntermediateHerbEcoEF ON GridEcotype.EcotypeID = IntermediateHerbEcoEF.EcoTypeID)                  \
@@ -489,19 +452,16 @@ contains
      
      print*,"Building MEGAN_EFS & MEGAN_LDF ..."
      
-     outfile='LAI3.nc'
-     nvars=12
+      outfileEF='EFMAP.nc'
+     outfileLDF='LDF.nc'
 
-     speciation_filename(1) = "db/SpeciationCrop210806.csv"  !"crop_speciation.csv"
-     speciation_filename(2) = "db/SpeciationHerb210806.csv"  !"herb_speciation.csv"
-     speciation_filename(3) = "db/SpeciationShrub210806.csv" !"shrub_speciation.csv"
-     speciation_filename(4) = "db/SpeciationTree210725.csv"  !"tree_speciation.csv"
+     !nvars=19  !nvars=4
      
      allocate(var_list(nvars))  
      allocate(var_unit(nvars))  
      allocate(var_desc(nvars))  
      allocate(LAIv(grid%nx,grid%ny,nvars))  
-  
+                                                                             
      file_list=(/ecotypefile,cropfile,treefile,grassfile,shrubfile/)
      !Levanto netcdf input files
      do k=1,nvars
@@ -514,8 +474,58 @@ contains
               endwhere
          call check(nf90_close(ncid ))
      enddo
-  
 
+
+     !Bases de datos:
+                     EF_file= "db/EFv210806.csv"             !Archivo con EF y LDF para cada VegId
+     speciation_filename(1) = "db/SpeciationCrop210806.csv"  !"crop_speciation.csv"
+     speciation_filename(2) = "db/SpeciationHerb210806.csv"  !"herb_speciation.csv"
+     speciation_filename(3) = "db/SpeciationShrub210806.csv" !"shrub_speciation.csv"
+     speciation_filename(4) = "db/SpeciationTree210725.csv"  !"tree_speciation.csv"
+ 
+
+     !PSEUDO_CODE:=========================================================
+     !para EF:    
+     do i=ef_s, ef_e:   !para "i" en cada especie
+         !<GF>_EcoEF(i) = sum( EF(i) * growthformFile%Specfrac )
+         CropEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+         TreeEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+         HerbEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+        ShrubEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+      !(Join EF on VegID), Group by EcotypeId
+      enddo
+
+      !para LDF:                                                            
+      do j=ldf_s,ldf_e  !para "j" en cada especie
+         !<GF>_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+         CropEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+         TreeEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+         HerbEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+        ShrubEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      !(Join LDF on VegID), Group by EcotypeId
+      enddo
+
+     do i=ef_s, ef_e: !para "i" en cada especie
+       EF(i) = Sum( [EcotypeFrac] *
+                      (   [CropFrac ]*  CropEcoEF{i}  
+                        + [TreeFrac ]*  TreeEcoEF{i} 
+                        + [HerbFrac ]*  HerbEcoEF{i} 
+                        + [ShrubFrac]* ShrubEcoEF{i} 
+                       )
+       )
+     enddo
+     do j=ldf_s, ldf_e: !para "j" en cada especie
+       EF(i) = Sum( [EcotypeFrac] *
+                      (   [CropFrac ]*  CropEcoEF{i}  
+                        + [TreeFrac ]*  TreeEcoEF{i} 
+                        + [HerbFrac ]*  HerbEcoEF{i} 
+                        + [ShrubFrac]* ShrubEcoEF{i} 
+                       )
+       )
+     enddo
+     !END PSEUDO_CODE====================================================
+
+     !Idea de ChatGPT:
      ! Calculate intermediate EF values for each growth form and ecotype
      !DO k = 1, num_growthforms
      !  OPEN(unit=k, file=speciation_filename(k))
@@ -614,20 +624,14 @@ end program
 !(4) call write_*
 !       prepmegan4cmaq_cantype.f90:      write(99,'(a)')"CID,ICELL,JCELl,NEEDL,TROPI,BROAD,SHRUB,HERB,CROP"
 !       prepmegan4cmaq_lai.f90:          write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,LAI01,LAI02,LAI03,LAI04,LAI05,LAI06,LAI07,LAI08,LAI09,LAI10, &
-
 !       prepmegan4cmaq_ecotype.f90:      write(99,'(a)')"gridID,EcotypeID,EcotypeFrac"
 !       prepmegan4cmaq_grwform.f90:      write(99,'(a)')"gridID,TreeFrac,CropFrac,ShrubFrac,HerbFrac"
-
-!
 !       prepmegan4cmaq_ef.f90:           write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,DSRAD,DTEMP,ISOP,MYRC,SABI,LIMO,A_3CAR,OCIM,BPIN,APIN,OMTP,FARN,BCAR,OSQT,MBO,MEOH,ACTO,CO,NO,BIDER,STRESS,OTHER"
 !       prepmegan4cmaq_fert.f90:         write(99,888)"CELL_ID,X,Y,LAT,LONG",fertday
-!       
 !       prepmegan4cmaq_landtype.f90:     write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,LANDTYP"
-
 !       prepmegan4cmaq_nitrogen.f90:     write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,NITROGEN01,NITROGEN02,NITROGEN03,NITROGEN04,NITROGEN05,NITROGEN06,NITROGEN07,NITROGEN08,NITROGEN09,NITROGEN10, &
 !       prepmegan4cmaq_arid.f90:         write(99,'(a)')"CID, ICELL, JCELL,  ARID"
 !       prepmegan4cmaq_non_arid.f90:     write(99,'(a)')"CID, ICELL, JCELL,  NON_ARID"
 !       prepmegan4cmaq_pft.f90:          write(99,'(a)')"CID, ICELL, JCELL,  NT_EG_TEMP,  NT_DC_BORL,  NT_EG_BORL, &
 !       prepmegan4cmaq_w126.f90:         write(99,'(a)')"CID, ICELL, JCELL,  W126(ppm-hours)"
-
 !(5) clean-up (deallocate)
