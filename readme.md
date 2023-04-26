@@ -93,11 +93,9 @@ Output files:
 
 + LAI `MEGAN_LAI` (Leaf Area Index). The MEGAN_LAI file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor. It contains leaf area index that is separate from LAI values used in the rest of CMAQ. By default MEGAN will use this file for LAI, but users can choose to use the LAI values that are read in from MCIP files by setting the environmental variable USE_MEGAN_LAI to N in their run script.
 
----
 + BDSNP_AFILE: arid flag. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_AFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It identifies climatically arid grid cells with 1s and 0s.
 + BDSNP_NAFILE: nonarid flag. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_NAFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It identifies climatically non-arid grid cells with 1s and 0s.
 + BDSNP_LFILE: landfile type. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_LFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It assigns each grid cell to one of 24 land types.
 + BDSNP_FFILE: fertilizer reservoir. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_FFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It contains daily fertilizer information in ng N/m2 using 366 variables.
 + BDSNP_NFILE: nitrogen deposition. Used by: CCTM online MEGAN biogenics emissions' BDSNP soil nitrogen model option. The BDSNP_NFILE file is an I/O API GRDDED3 file that is created using the MEGAN preprocessor for use with the BDSNP soil nitrogen option. It contains monthly average nitrogen deposition values in ng/m2/s using 12 variables.
----
 -->

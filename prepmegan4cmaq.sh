@@ -11,18 +11,25 @@ GRIDDESC_file="./GRIDDESC_example"
 GRIDNAME="Argentina"
 
 #Input Files:
-    crop_frac_file='./input/GF3aCrop.nc' 			#frac of crop cover       - file path
-   grass_frac_file='./input/GF3aGrass.nc'			#frac of grass cover      - file path
-   shrub_frac_file='./input/GF3aShrub.nc'			#frac of shrubs cover     - file path
-    tree_frac_file='./input/GF3aTree.nc'			#frac of trees cover      - file path
- nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'		#frac of needleleaf trees - file path
- tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'		#frac of tropical   trees - file path
-# bl_tree_frac_file='./input/tropfrac_reorder_lat.nc'		#frac of broadleaf  trees - file_path
-      ecotype_file='./input/EVT3b.nc'				#(not so clear what it represents) - file_path
-        laiv_files='./input/laiv2003'				#(LAIv=LAI/VEGCOVER) file path just the name before month indicator!
+    crop_frac_file='./input/GF3aCrop.nc' 		  #frac of crop cover       - file path
+   grass_frac_file='./input/GF3aGrass.nc'		  #frac of grass cover      - file path
+   shrub_frac_file='./input/GF3aShrub.nc'		  #frac of shrubs cover     - file path
+    tree_frac_file='./input/GF3aTree.nc'		  #frac of trees cover      - file path
+
+    nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'	  #frac of needleleaf trees - file path
+ tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'	  #frac of tropical   trees - file path
+# bl_tree_frac_file='./input/BLfrac_reorder_lat.nc'	  #frac of broadleaf  trees - file_path
+      ecotype_file='./input/EVT3b.nc'			  #(not so clear what it represents) - file_path
+        laiv_files='./input/laiv2003'			  #(LAIv=LAI/VEGCOVER) file path just the name before month indicator!
 #	  lai_file='./input/lai*'
 #      veg_cov_file='./input/veg_cov*3'
 #       wrfout_file='./input/wrfout_$YYYY$MM$DD_00:00:00_d01.nc'
+#For BDPN:
+#         arid_file=''
+#      nonarid_file=''
+#     landtype_file=''
+#fertilization_file=''
+#nitrogen_depo_file=''
 
 #-------------------------------------------------
 #(0) Get grid & proj parameters from GRIDDESC:
@@ -39,10 +46,6 @@ nx=197;ny=237;nz=1;dx=20000;dy=20000;     #ncols,nrows,xcel, ycell
 
 #Grilla (sale de GRIDDESC)
 xmin=$xorig; ymin=$yorig; xmax=$(( $xorig*-1 )); ymax=$(( $yorig*-1 ))
-
-#Date params:
-#start_date_s=$(date -d "$start_date" +%s)
-#  end_date_s=$(date -d "$end_date  " +%s)
 #------------------------------------------------
 #(1) Re-gridding: Agarrar los inputs y regrillarlos (e interpolar) segun GRIDDESC.
 #interpolation methods: near (default), bilinear, cubic, cubicspline, lanczos, average, rms, mode,  max, min, med, Q1, Q3, sum
@@ -52,14 +55,15 @@ fi
 
 echo "Regridding input files..."
 
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $crop_frac_file ./tmp_grids/crop.nc 
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grass_frac_file ./tmp_grids/grass.nc 
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrub_frac_file ./tmp_grids/shrub.nc
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $tree_frac_file ./tmp_grids/tree.nc 
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_tree_frac_file ./tmp_grids/nl_tree.nc 
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_tree_frac_file ./tmp_grids/tp_tree.nc
-gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"      $ecotype_file ./tmp_grids/ecotye.nc 
+echo "   $crop_frac_file    -> crop.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $crop_frac_file ./tmp_grids/crop.nc 
+echo "   $grass_frac_file   -> grass.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grass_frac_file ./tmp_grids/grass.nc 
+echo "   $shrub_frac_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrub_frac_file ./tmp_grids/shrub.nc
+echo "   $tree_frac_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $tree_frac_file ./tmp_grids/tree.nc 
+echo "   $nl_tree_frac_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_tree_frac_file ./tmp_grids/nl_tree.nc 
+echo "   $tp_tree_frac_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_tree_frac_file ./tmp_grids/tp_tree.nc
+echo "   $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"      $ecotype_file ./tmp_grids/ecotype.nc 
 
+echo "   $laiv_files        -> laiv.nc   "
 for MM in $(seq --format='%02.0f' 1 1 12)
 do
 	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 

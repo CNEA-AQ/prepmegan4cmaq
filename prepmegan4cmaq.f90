@@ -1,8 +1,8 @@
-!------------------------------------------------------
-! Based on UCI-BAI-MEGAN code and megan_bio_emis.f90
+!---------------------------------------------------------------
+! Based on UCI-BAI-MEGAN Prep-code and megan_bio_emis.f90 (NCAR)
 ! 
 ! author: Ramiro A. Espada. April 2023.
-!------------------------------------------------------
+!---------------------------------------------------------------
 program prepmegan4cmaq
 
   use netcdf
@@ -52,11 +52,43 @@ program prepmegan4cmaq
   
   !`MEGAN_LAI` (Leaf Area Index).
   call build_LAIv(grid,proj,laiv_files)
-  
-  !`MEGAN_LDF` (*Light Dependence Fractions*)
  
 
-  !`MEGAN_EFS` (emission factors).
+!===============================================================================================================
+!Las siguientes funciones usan MFEP (Megan Factor Emission Processor): acà voy a ir describiendo que entiendo que hace este
+!procesador:
+
+!(1) Carga "bases de datos"
+
+!==> EFv210806.csv <==  Perfiles de EF y LDF de cada VegID
+!VegID,CommonName,GenusGroup,Family,GrowthForm,Type,EF1,EF2,EF3,EF4,EF5,EF6,EF7,EF8,EF9,EF10,EF11,EF12,EF13,EF14,EF15,EF16,EF17,EF18,EF19,LDF3,LDF4,LDF5,LDF6,References,Comment
+ 
+!==> SpeciationCrop210806.csv   <==Esta setiado all ==1  Cuanto de cada veg hay en cada growth-type y cada ecotype
+!EcoTypeID,VegID,CropSpecFrac
+!==> SpeciationHerb210806.csv   <==Esta setiado all ==1 
+!EcoTypeID,VegID,HerbSpecFrac
+!==> SpeciationShrub210806.csv  <==Esta setiado all ==1 
+!EcoTypeID,VegID,ShrubSpecFrac
+!==> SpeciationTree210725.csv   <== Este si tiene datos
+!EcoTypeID,VegID,treeSpecfrac,EcoTypeDescription
+
+!==> grid_ecotype.tx_12km.csv       <== prepmegan4cmaq_ecotype.f90
+!gridID,EcotypeID,EcotypeFrac                   
+!==> grid_growth_form.tx_12km.csv   <== prepmegan4cmaq_grwform.f90         
+!gridID,TreeFrac,CropFrac,ShrubFrac,HerbFrac
+
+!(2) Hace sql-queries para cruzar info
+
+!(3) La cuenta seria: (pensarla)
+!    
+!===============================================================================================================
+
+
+  !!`MEGAN_LDF` (*Light Dependence Fractions*)
+  !call build_LDF()
+
+  !!`MEGAN_EFS` (emission factors).
+  !call build_EFS()
 
 
 print*, "========================================="
@@ -73,18 +105,18 @@ contains
    end if
  end subroutine check
 
- !Interfaz a "date"
- function date(date_str, fmt_str) result(output)
-   implicit none
-   character(*), intent(in) :: date_str, fmt_str
-   character(256)           :: command
-   character(20)            :: output
-   command="date -d "//trim(date_str)//" '+"//trim(fmt_str)//"'  > tmp_date.txt"
-   call system( trim(command) )
-   !print*,trim(command)
-   open(9, file='tmp_date.txt', status='old',action='read'); read(9, '(A)', iostat=status) output;  close(9)
-   call system('rm tmp_date.txt')
- end function
+! !Interfaz a "date"
+! function date(date_str, fmt_str) result(output)
+!   implicit none
+!   character(*), intent(in) :: date_str, fmt_str
+!   character(256)           :: command
+!   character(20)            :: output
+!   command="date -d "//trim(date_str)//" '+"//trim(fmt_str)//"'  > tmp_date.txt"
+!   call system( trim(command) )
+!   !print*,trim(command)
+!   open(9, file='tmp_date.txt', status='old',action='read'); read(9, '(A)', iostat=status) output;  close(9)
+!   call system('rm tmp_date.txt')
+! end function
 
  function atoi(str)     !string -> int
    implicit none
@@ -123,6 +155,10 @@ contains
         close(2)
  end subroutine
 
+
+!----------------------------------
+!  MEGAN_CTS 
+!---------------------------------
 subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile)
    implicit none
    type(grid_type) ,intent(in) :: g
@@ -135,6 +171,8 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
    character(len=25),allocatable :: var_list(:),var_desc(:)
    character(len=200),allocatable :: file_list(:)
    integer :: nvars
+
+   print*,"Building MEGAN_CTS file ..."
 
    outfile='CT3.nc'
    nvars=6
@@ -154,8 +192,11 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
        call check(nf90_close(ncid                             ))
    enddo
 
-   var_list =(/ "shrub_frac             ","crop_frac              ","grass_frac             ","nl_tree_frac           ","trop_tree_frac         ","bl_tree_frac           "/)
-   var_desc =(/ "shrub fraction         ","crop fraction          ","grass fraction         ","needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction"/) 
+   !var_list=(/'NEEDL      '     ,'TROPI      ' ,'BROAD      ','SHRUB      ','HERB       ','CROP       '/)
+   !   'Needleaf tree   ', 'Tropical tree   ', 'Broadleaf tree      ','Shrub   ', 'Herbaceous  ', 'Crop   '
+   var_list =(/ "nl_tree_frac           ","trop_tree_frac         ","bl_tree_frac           ", "shrub_frac             ","crop_frac              ","grass_frac             " /)
+   var_desc=(/ "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","crop fraction          ","grass fraction         " /) 
+
    ! Create the NetCDF file
    call check(nf90_create(outFile, NF90_CLOBBER, ncid))
        ! Defino dimensiones
@@ -194,10 +235,10 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
        call check(nf90_put_var(ncid, var_id, CTS(:,:,4)  ))        
        !needleleaf tree
        call check(nf90_inq_varid(ncid,"nl_tree_frac"   ,var_id))
-       call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1-CTS(:,:,6)) * CTS(:,:,5)     )) 
+       call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1.0-CTS(:,:,6)) * CTS(:,:,5)     )) 
        !boradleaf tree
        call check(nf90_inq_varid(ncid,"bl_tree_frac"   ,var_id))               
-       call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1-CTS(:,:,6)) * (1-CTS(:,:,5)) ))
+       call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1.0-CTS(:,:,6)) * (1.0-CTS(:,:,5)) ))
        !tropical tree
        call check(nf90_inq_varid(ncid,"trop_tree_frac" ,var_id))
        call check(nf90_put_var(ncid, var_id, CTS(:,:,1)*CTS(:,:,6)                    )) 
@@ -250,6 +291,12 @@ subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptr
 
 end subroutine build_CT3
 
+
+
+
+!----------------------------------
+!  MEGAN_LAI 
+!---------------------------------
 subroutine build_LAIv(g,p,laivfile)
    implicit none
    type(grid_type) ,intent(in) :: g
@@ -261,6 +308,9 @@ subroutine build_LAIv(g,p,laivfile)
    integer :: nvars
    character(len=2)::kk
    real :: missing_value
+   
+   print*,"Building MEGAN_LAI file ..."
+   
    outfile='LAI3.nc'
    nvars=12
 
@@ -321,8 +371,6 @@ end subroutine
 
 
 
-
-
 end program
 
 
@@ -332,18 +380,16 @@ end program
 !(3) call  megan2_bioemiss (creo que aca es donde interpola)
 !(4) call write_*
 !       prepmegan4cmaq_cantype.f90:      write(99,'(a)')"CID,ICELL,JCELl,NEEDL,TROPI,BROAD,SHRUB,HERB,CROP"
-!       prepmegan4cmaq_grwform.bck.f90:  write(99,'(a)')"gridID,TreeFrac,CropFrac,ShrubFrac,HerbFrac"
-!       prepmegan4cmaq_grwform.f90:      write(99,'(a)')"gridID,TreeFrac,CropFrac,ShrubFrac,HerbFrac"
-
 !       prepmegan4cmaq_lai.f90:          write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,LAI01,LAI02,LAI03,LAI04,LAI05,LAI06,LAI07,LAI08,LAI09,LAI10, &
 
 !       prepmegan4cmaq_ecotype.f90:      write(99,'(a)')"gridID,EcotypeID,EcotypeFrac"
+!       prepmegan4cmaq_grwform.f90:      write(99,'(a)')"gridID,TreeFrac,CropFrac,ShrubFrac,HerbFrac"
 
 !
 !       prepmegan4cmaq_ef.f90:           write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,DSRAD,DTEMP,ISOP,MYRC,SABI,LIMO,A_3CAR,OCIM,BPIN,APIN,OMTP,FARN,BCAR,OSQT,MBO,MEOH,ACTO,CO,NO,BIDER,STRESS,OTHER"
 !       prepmegan4cmaq_fert.f90:         write(99,888)"CELL_ID,X,Y,LAT,LONG",fertday
-!       prepmegan4cmaq_landtype.f90:     write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,LANDTYP"
 !       
+!       prepmegan4cmaq_landtype.f90:     write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,LANDTYP"
 
 !       prepmegan4cmaq_nitrogen.f90:     write(99,'(a)')"CELL_ID,X,Y,LAT,LONG,NITROGEN01,NITROGEN02,NITROGEN03,NITROGEN04,NITROGEN05,NITROGEN06,NITROGEN07,NITROGEN08,NITROGEN09,NITROGEN10, &
 !       prepmegan4cmaq_arid.f90:         write(99,'(a)')"CID, ICELL, JCELL,  ARID"
