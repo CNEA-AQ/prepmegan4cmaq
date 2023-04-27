@@ -50,7 +50,7 @@ program prepmegan4cmaq
   call build_CT3(grid,proj,cropf_file,treef_file,grassf_file,shrubf_file,nl_treef_file,tp_treef_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  !call build_LAIv(grid,proj,laiv_files)
+  call build_LAIv(grid,proj,laiv_files)
 
   !!`MEGAN_LDF` (*Light Dependence Fractions*)
   !call build_LDF()
@@ -387,8 +387,6 @@ contains
   !    for j in range(ldf_s,ldf_e+1,1):
   !        q2 = f"Sum([LDF{j}]*[{growthform}Specfrac]) AS {growthform}EcoLDF{j}, "
   !        query_str+=q2
-  
-
   !    query_str = query_str.rstrip(', ')
   !    query_str+=f" FROM Speciation{growthform} \
   !                 INNER JOIN EF ON Speciation{growthform}.VegID = EF.VegID \
@@ -433,160 +431,199 @@ contains
   !    GROUP BY GridGrowthForm.gridID;"
   !
   !===============================================================================================================
-  subroutine build_EFS_LDF(g,p,ecotypefile,cropfile,treefile,grassfile,shrubfile)
-     implicit none
-     type(grid_type) ,intent(in) :: g
-     type(proj_type) ,intent(in) :: p
-     character(len=200) :: laivfile
-     real, allocatable :: DATA(:,:,:)
-     integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
-     character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
-     character(len=10) :: outfile
-     integer :: nvars
-     character(len=2)::kk
-     real :: missing_value
-     
-     character(len=50) :: speciation_filename(num_growthforms)
-     real, dimension(num_ef)  :: intermediate_ef_herb , intermediate_ef_shrub,  intermediate_ef_tree,  intermediate_ef_crop
-     real, dimension(num_ldf) :: intermediate_ldf_herb, intermediate_ldf_shrub, intermediate_ldf_tree, intermediate_ldf_crop
-     
-     print*,"Building MEGAN_EFS & MEGAN_LDF ..."
-     
-      outfileEF='EFMAP.nc'
-     outfileLDF='LDF.nc'
+   subroutine build_EFS_LDF(g,p,ecotypefile,cropfile,treefile,grassfile,shrubfile)
+      implicit none
+      type(grid_type) ,intent(in) :: g
+      type(proj_type) ,intent(in) :: p
+      character(len=200) :: laivfile
+      real, allocatable :: DATA(:,:,:)
+      integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
+      character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
+      character(len=10) :: outfile
+      integer :: nvars
+      character(len=2)::kk
+      real :: missing_value
+      
+      character(len=50) :: speciation_filename(num_growthforms)
+      real, dimension(num_ef)  :: intermediate_ef_herb , intermediate_ef_shrub,  intermediate_ef_tree,  intermediate_ef_crop
+      real, dimension(num_ldf) :: intermediate_ldf_herb, intermediate_ldf_shrub, intermediate_ldf_tree, intermediate_ldf_crop
+      
+      real, allocatable :: grid(:,:,:)
+      character(len=50) :: file_list(5) !ecoype, crop, tree, grass, shrub
 
-     !nvars=19  !nvars=4
-     
-     allocate(var_list(nvars))  
-     allocate(var_unit(nvars))  
-     allocate(var_desc(nvars))  
-     allocate(LAIv(grid%nx,grid%ny,nvars))  
-                                                                             
-     file_list=(/ecotypefile,cropfile,treefile,grassfile,shrubfile/)
-     !Levanto netcdf input files
-     do k=1,nvars
-         write(kk,'(I0.2)') k
-         call check(nf90_open(trim(laivfile)//kk//".nc", nf90_write, ncid ))
-              call check(   nf90_inq_varid(ncid,'Band1', var_id ))
-              call check(   nf90_get_var(ncid, var_id , LAIv(:,:,k)  ))
-              where (LAIv < 0.0 )
-                      LAIv=0.0
-              endwhere
-         call check(nf90_close(ncid ))
-     enddo
+      print*,"Building MEGAN_EFS & MEGAN_LDF ..."
+      
+       outfileEF='EFMAP.nc'
+      outfileLDF='LDF.nc'
+ 
+      !nvars=19  !nvars=4
+      
+      allocate(var_list(nvars))  
+      allocate(var_unit(nvars))  
+      allocate(var_desc(nvars))  
+      allocate(LAIv(grid%nx,grid%ny,nvars))  
+      
+      
+      allocate(grid(grid%nx,grid%ny,5))  
+                                                                              
+      !Levanto netcdf input files
+      file_list=(/ecotypefile,cropfile,treefile,grassfile,shrubfile/)
+      do k=1,5
+          write(kk,'(I0.2)') k
+          call check(nf90_open(trim(file_list(k)), nf90_write, ncid ))
+               call check(   nf90_inq_varid(ncid,'Band1', var_id ))
+               call check(   nf90_get_var(ncid, var_id , GRID(:,:,k)  ))
+          call check(nf90_close(ncid ))
+      enddo
+      where (GRID < 0.0 )
+              GIRD=0.0
+      endwhere
 
-
-     !Bases de datos:
-                     EF_file= "db/EFv210806.csv"             !Archivo con EF y LDF para cada VegId
-     speciation_filename(1) = "db/SpeciationCrop210806.csv"  !"crop_speciation.csv"
-     speciation_filename(2) = "db/SpeciationHerb210806.csv"  !"herb_speciation.csv"
-     speciation_filename(3) = "db/SpeciationShrub210806.csv" !"shrub_speciation.csv"
-     speciation_filename(4) = "db/SpeciationTree210725.csv"  !"tree_speciation.csv"
+      !Bases de datos:
+      db_filename(0) = "db/EFv210806.csv"             !Archivo con EF y LDF para cada VegId
+      db_filename(1) = "db/SpeciationCrop210806.csv"  !"crop_speciation.csv"
+      db_filename(2) = "db/SpeciationHerb210806.csv"  !"herb_speciation.csv"
+      db_filename(3) = "db/SpeciationShrub210806.csv" !"shrub_speciation.csv"
+      db_filename(4) = "db/SpeciationTree210725.csv"  !"tree_speciation.csv"
  
 
-     !PSEUDO_CODE:=========================================================
-     !para EF:    
-     do i=ef_s, ef_e:   !para "i" en cada especie
-         !<GF>_EcoEF(i) = sum( EF(i) * growthformFile%Specfrac )
-         CropEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
-         TreeEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
-         HerbEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
-        ShrubEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
-      !(Join EF on VegID), Group by EcotypeId
-      enddo
+      !Leo primero EF y lo guardo en algun type:
+      ! EF%VegID            <- array con cada veg
+      ! EF%EF               <-Matriz con EFs
+      ! EF%LDF              <-Matriz con LDFs  
+        
+      ! Armo alguna función que al dar VegID me devuelva los EFs y LDFs.
+      ! index = INDEX(EF%VegID, VegID)
 
-      !para LDF:                                                            
-      do j=ldf_s,ldf_e  !para "j" en cada especie
-         !<GF>_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
-         CropEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
-         TreeEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
-         HerbEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
-        ShrubEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
-      !(Join LDF on VegID), Group by EcotypeId
-      enddo
+      DO k = 1, 4       !recorro growthForms
+ 
+        open(unit=k, file=speciation_filename(k), status='old', action='read')
 
-     do i=ef_s, ef_e: !para "i" en cada especie
-       EF(i) = Sum( [EcotypeFrac] *
-                      (   [CropFrac ]*  CropEcoEF{i}  
-                        + [TreeFrac ]*  TreeEcoEF{i} 
-                        + [HerbFrac ]*  HerbEcoEF{i} 
-                        + [ShrubFrac]* ShrubEcoEF{i} 
-                       )
-       )
-     enddo
-     do j=ldf_s, ldf_e: !para "j" en cada especie
-       EF(i) = Sum( [EcotypeFrac] *
-                      (   [CropFrac ]*  CropEcoEF{i}  
-                        + [TreeFrac ]*  TreeEcoEF{i} 
-                        + [HerbFrac ]*  HerbEcoEF{i} 
-                        + [ShrubFrac]* ShrubEcoEF{i} 
-                       )
-       )
-     enddo
-     !END PSEUDO_CODE====================================================
+          read(k,'(A)') *            !(tiro el header)  
 
-     !Idea de ChatGPT:
-     ! Calculate intermediate EF values for each growth form and ecotype
-     !DO k = 1, num_growthforms
-     !  OPEN(unit=k, file=speciation_filename(k))
-     !  DO i = 1, num_ecotypes
-     !    READ(k, *) ecotype_id, veg_id
-     !    READ(k, *) intermediate_ef_crop(i)
-     !    READ(k, *) intermediate_ef_herb(i)
-     !    READ(k, *) intermediate_ef_shrub(i)
-     !    READ(k, *) intermediate_ef_tree(i)
-     !    READ(k, *) intermediate_ldf_crop(i)
-     !    READ(k, *) intermediate_ldf_herb(i)
-     !    READ(k, *) intermediate_ldf_shrub(i)
-     !    READ(k, *) intermediate_ldf_tree(i)
-     !  END DO
-     !  CLOSE(k)
-     !  
-     !! Calculate final EF and LDF values for this growth form
-     !final_ef = 0.0
-     !final_ldf = 0.0
-     !DO i = 1, num_ecotypes
-     !  final_ef = final_ef + ecotype_frac(i) * &
-     !      (growthform_frac(1) * intermediate_ef_crop(i) + &
-     !      growthform_frac(2) * intermediate_ef_herb(i) + &
-     !      growthform_frac(3) * intermediate_ef_shrub(i) + &
-     !      growthform_frac(4) * intermediate_ef_tree(i))
-     !  final_ldf = final_ldf + ecotype_frac(i) * &
-     !      (growthform_frac(1) * intermediate_ldf_crop(i) + &
-     !      growthform_frac(2) * intermediate_ldf_herb(i) + &
-     !      growthform_frac(3) * intermediate_ldf_shrub(i) + &
-     !      growthform_frac(4) * intermediate_ldf_tree(i))
-     !END DO
-     !
-     !! Save final EF and LDF values for this growth form
-     !DO i = 1, num_ef
-     !  grid_ef(i) = final_ef(i)
-     !END DO
+          iostat=0
+          do while(iostat == 0)      !loop por cada fila specFile
 
+             read(k,*,iostat=iostat) EcoID,VegID,GWTSpecfrac,dummy
+             
+             i = INDEX(EF%VegID, VegID)
+             cropEcoEF(EcoID,:) += EF%EF(i,:) * GWTSpecfrac
+      
+          enddo
+        close(k)
+          
+          where ( GRID(:,:,0) == EcoID )
 
-    var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO"/)
-    var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO"/)
+                     EF(:,:,,)=   GRID(:,:,k)*( get_EF(VegID)*GWTSpecfrac  )
+          endwhere
 
-     var_unit=(/"nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension" /)
-  
-     ! Create the NetCDF file
-     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
-  
-      !Abro NetCDF outFile
-      call check(nf90_open(outFile, nf90_write, ncid       ))
-       do k=1, nvars       
-         write(kk,'(I0.2)') k
-         call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
-         call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
-       enddo
-         !TFLAG:
-         call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-         call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
-  
-      call check(nf90_close( ncid ))
-      !Cierro NetCDF outFile
-  
-  end subroutine
+      ENDDO
+
+      !!PSEUDO_CODE:=========================================================
+      !!para EF:    
+      !do i=ef_s, ef_e:   !para "i" en cada especie
+      !    !<GF>_EcoEF(i) = sum( EF(i) * growthformFile%Specfrac )
+      !    CropEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+      !    TreeEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+      !    HerbEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+      !   ShrubEcoEF_EcoEF(i)=sum( EF(i) * growthformFile%Specfrac )
+      ! !(Join EF on VegID), Group by EcotypeId
+      ! enddo
+
+      ! do i=ef_s, ef_e: !para "i" en cada especie
+      !   EF(i) = Sum( [EcotypeFrac] *
+      !                  (   [CropFrac ]*  CropEcoEF{i}  
+      !                    + [TreeFrac ]*  TreeEcoEF{i} 
+      !                    + [HerbFrac ]*  HerbEcoEF{i} 
+      !                    + [ShrubFrac]* ShrubEcoEF{i} 
+      !                   )
+      !   )
+      ! enddo
+      ! 
+      !!========
+      !!para LDF:                                                            
+      ! do j=ldf_s,ldf_e  !para "j" en cada especie
+      !    !<GF>_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      !    CropEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      !    TreeEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      !    HerbEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      !   ShrubEcoEF_EcoLDF(j)=sum( LDF(j) * growthformFile%Specfrac )
+      ! !(Join LDF on VegID), Group by EcotypeId
+      ! enddo
+ 
+      !do j=ldf_s, ldf_e: !para "j" en cada especie
+      !  EF(i) = Sum( [EcotypeFrac] *
+      !                 (   [CropFrac ]*  CropEcoEF{i}  
+      !                   + [TreeFrac ]*  TreeEcoEF{i} 
+      !                   + [HerbFrac ]*  HerbEcoEF{i} 
+      !                   + [ShrubFrac]* ShrubEcoEF{i} 
+      !                  )
+      !  )
+      !enddo
+      !END PSEUDO_CODE====================================================
+ 
+
+      !Idea de ChatGPT:
+      ! Calculate intermediate EF values for each growth form and ecotype
+      !DO k = 1, num_growthforms
+      !  OPEN(unit=k, file=speciation_filename(k))
+      !  DO i = 1, num_ecotypes
+      !    READ(k, *) ecotype_id, veg_id
+      !    READ(k, *) intermediate_ef_crop(i)
+      !    READ(k, *) intermediate_ef_herb(i)
+      !    READ(k, *) intermediate_ef_shrub(i)
+      !    READ(k, *) intermediate_ef_tree(i)
+      !    READ(k, *) intermediate_ldf_crop(i)
+      !    READ(k, *) intermediate_ldf_herb(i)
+      !    READ(k, *) intermediate_ldf_shrub(i)
+      !    READ(k, *) intermediate_ldf_tree(i)
+      !  END DO
+      !  CLOSE(k)
+      !  
+      !! Calculate final EF and LDF values for this growth form
+      !final_ef = 0.0
+      !final_ldf = 0.0
+      !DO i = 1, num_ecotypes
+      !  final_ef = final_ef + ecotype_frac(i) * &
+      !      (growthform_frac(1) * intermediate_ef_crop(i) + &
+      !      growthform_frac(2) * intermediate_ef_herb(i) + &
+      !      growthform_frac(3) * intermediate_ef_shrub(i) + &
+      !      growthform_frac(4) * intermediate_ef_tree(i))
+      !  final_ldf = final_ldf + ecotype_frac(i) * &
+      !      (growthform_frac(1) * intermediate_ldf_crop(i) + &
+      !      growthform_frac(2) * intermediate_ldf_herb(i) + &
+      !      growthform_frac(3) * intermediate_ldf_shrub(i) + &
+      !      growthform_frac(4) * intermediate_ldf_tree(i))
+      !END DO
+      !
+      !! Save final EF and LDF values for this growth form
+      !DO i = 1, num_ef
+      !  grid_ef(i) = final_ef(i)
+      !END DO
+ 
+ 
+     !var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO"/)
+     !var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO"/)
+ 
+     ! var_unit=(/"nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension" /)
+   
+     ! ! Create the NetCDF file
+     ! call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+   
+     !  !Abro NetCDF outFile
+     !  call check(nf90_open(outFile, nf90_write, ncid       ))
+     !   do k=1, nvars       
+     !     call check(nf90_inq_varid(ncid,var_list(k) ,var_id))               
+     !     call check(nf90_put_var(ncid, var_id, data(:,:,k)/1000.0 ))
+     !   enddo
+     !     !TFLAG:
+     !     call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+     !     call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
+   
+     !  call check(nf90_close( ncid ))
+     !  !Cierro NetCDF outFile
+   
+   end subroutine
 
 
 

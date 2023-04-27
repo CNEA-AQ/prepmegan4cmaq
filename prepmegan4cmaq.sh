@@ -60,19 +60,19 @@ fi
 
 echo "Regridding input files..."
 
-echo "   $crop_frac_file    -> crop.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $crop_frac_file ./tmp_grids/crop.nc 
-echo "   $grass_frac_file   -> grass.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grass_frac_file ./tmp_grids/grass.nc 
-echo "   $shrub_frac_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrub_frac_file ./tmp_grids/shrub.nc
-echo "   $tree_frac_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $tree_frac_file ./tmp_grids/tree.nc 
-echo "   $nl_tree_frac_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_tree_frac_file ./tmp_grids/nl_tree.nc 
-echo "   $tp_tree_frac_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_tree_frac_file ./tmp_grids/tp_tree.nc
-echo "   $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"      $ecotype_file ./tmp_grids/ecotype.nc 
+#echo "   $cropf_file    -> crop.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $cropf_file ./tmp_grids/crop.nc 
+#echo "   $grassf_file   -> grass.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grassf_file ./tmp_grids/grass.nc 
+#echo "   $shrubf_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrubf_file ./tmp_grids/shrub.nc
+#echo "   $treef_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $treef_file ./tmp_grids/tree.nc 
+#echo "   $nl_treef_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_treef_file ./tmp_grids/nl_tree.nc 
+#echo "   $tp_treef_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_treef_file ./tmp_grids/tp_tree.nc
+echo "   $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode -f "NetCDF"      $ecotype_file ./tmp_grids/ecotype.nc 
 
-echo "   $laiv_files        -> laiv.nc   "
-for MM in $(seq --format='%02.0f' 1 1 12)
-do
-	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 
-done
+#echo "   $laiv_files        -> laiv.nc   "
+#for MM in $(seq --format='%02.0f' 1 1 12)
+#do
+#	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 
+#done
 
 #Armo namelist input para prepmegan4cmaq.exe
 cat << EOF > example.inp 
