@@ -36,6 +36,10 @@ nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'
 #       lai_file='./input/lai*'
 #   veg_cov_file='./input/veg_cov*3'
 #    wrfout_file='./input/wrfout_$YYYY$MM$DD_00:00:00_d01.nc'
+
+          EFfile="./db/EFv210806.csv"		#Emission factor of each VegId
+         SpecGTfiles=("./db/SpeciationCrop210806.csv"  "./db/SpeciationHerb210806.csv"  "./db/SpeciationShrub210806.csv"  "./db/SpeciationTree210725.csv")	#"Speciation" files for each GrowthType.
+	      GT=("crop" "herb" "shrub" "tree") #GrowthType (same order than above!)
 #-------------------------------------------------
 #(0) Get grid & proj parameters from GRIDDESC:
 read projName xorig yorig dx dy nx ny nz <<< $( sed -n "/${GRIDNAME}/{n;p;q}" "$GRIDDESC_file" )
@@ -60,19 +64,71 @@ fi
 
 echo "Regridding input files..."
 
-#echo "   $cropf_file    -> crop.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $cropf_file ./tmp_grids/crop.nc 
-#echo "   $grassf_file   -> grass.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grassf_file ./tmp_grids/grass.nc 
-#echo "   $shrubf_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrubf_file ./tmp_grids/shrub.nc
-#echo "   $treef_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $treef_file ./tmp_grids/tree.nc 
-#echo "   $nl_treef_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_treef_file ./tmp_grids/nl_tree.nc 
-#echo "   $tp_treef_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_treef_file ./tmp_grids/tp_tree.nc
-echo "   $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode -f "NetCDF"      $ecotype_file ./tmp_grids/ecotype.nc 
+echo "   $cropf_file    -> crop.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $cropf_file ./tmp_grids/crop.nc 
+echo "   $grassf_file   -> grass.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $grassf_file ./tmp_grids/grass.nc 
+echo "   $shrubf_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"   $shrubf_file ./tmp_grids/shrub.nc
+echo "   $treef_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $treef_file ./tmp_grids/tree.nc 
+echo "   $nl_treef_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_treef_file ./tmp_grids/nl_tree.nc 
+echo "   $tp_treef_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_treef_file ./tmp_grids/tp_tree.nc
+echo "   $ecotype_file  -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode     -f "NetCDF"  $ecotype_file ./tmp_grids/ecotype.nc 
 
 #echo "   $laiv_files        -> laiv.nc   "
 #for MM in $(seq --format='%02.0f' 1 1 12)
 #do
 #	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 
 #done
+
+
+
+#============================================
+#Reescribo los archivos de forma mas facil de trabajar:
+#			      vegid, EF1,EF2,....,LDF19,LDF1,..,LDF4
+echo "Parsing Vegetation EFs and LDFs .. "
+
+awk -F"," 'BEGIN {OFS = ","} {print $1,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29}' $EFfile  > tmp_vegFrac.csv
+
+echo "Parsing Speciation files .. "
+# gtype,ecotype,vegid,vegfrac
+echo "gtype,ecotype,vegid,vegfrac" > tmp_specGT.csv
+for k in $(seq 0 $(( ${#GT[@]}-1)) )
+do
+	echo $k
+	gt=${GT[$k]}
+	gtFile=${SpecGTfiles[$k]}
+	awk -F"," -v gt=$gt 'BEGIN {OFS = ","}NR>1{ print gt,$0}' $gtFile >> tmp_specGT.csv
+done
+#============================================
+#Calculo el EF de cada GT agrupado por EcoT
+echo " Computing EF for each Growth-Type grouped by Ecotype.. "
+
+awk -F ',' '
+BEGIN {OFS = ","} 
+NR == FNR {
+   n=NF
+   for (i = 2; i <= NF; i++){
+   	EF[$1,i-1] = $i
+   };next
+} 
+NR != FNR {
+   for (i = 2; i <= n; i++) {
+       EFe[$1,$2,i-1] += $4 * EF[$3,i-1]
+   }
+} 
+END {
+   for (i in EFe) {
+       split(i,a,SUBSEP);
+
+       printf("%s,%s", a[1],a[2])
+       for (j = 1; j <= n; j++) {
+	  printf(",%.3f",EFe[a[1],a[2],j]);
+       }
+       printf("\n");
+   }
+}' tmp_vegFrac.csv tmp_specGT.csv | sort > 'db/GtEcoEF.csv'
+
+rm tmp_vegFrac.csv tmp_specGT.csv
+
+
 
 #Armo namelist input para prepmegan4cmaq.exe
 cat << EOF > example.inp 
@@ -93,6 +149,7 @@ start_date='${start_date}',
       ecotype_file='./tmp_grids/ecotype.nc',				
 
         laiv_files='./tmp_grids/laiv',				
+           GtEcoEF='db/GtEcoEF.csv'
 /
 EOF
 
