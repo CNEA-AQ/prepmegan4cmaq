@@ -52,9 +52,9 @@ program prepmegan4cmaq
   !`MEGAN_LAI` (Leaf Area Index).
   call build_LAIv(grid,proj,laiv_files)
 
+  call build_EFS_LDF(grid,proj,ecotype_file,cropf_file,treef_file,grassf_file,shrubf_file)
   !!`MEGAN_LDF` (*Light Dependence Fractions*)
   !call build_LDF()
-
   !!`MEGAN_EFS` (emission factors).
   !call build_EFS()
 
@@ -358,17 +358,20 @@ contains
       character(len=10) :: outfileEF,outfileLDF
       real :: missing_value
       character(len=300) header
+      integer i,j,k
       
-      real, allocatable :: GTYP(:,:,:)
-      integer, allocatable :: ECOTYPE(:,:)                 !este puede ser int tamb
+      real,    allocatable :: GTYP(:,:,:)       !growth type fraction
+      integer, allocatable :: ECOTYPE(:,:)      !este puede ser int tamb
+      integer :: EcoID
       real, allocatable :: TMPGRID(:,:), TMPGTYP(:,:)
       real, allocatable :: OUTGRID(:,:,:)
-      character(len=50) :: file_list(4), gtyp_list(4) ! crop, tree, grass, shrub
-      character(len=25) :: var_list(23),var_desc(23),var_unit(23) !19 EF + 4 LDF
+      character(len=50) :: file_list(4)
+
+      character(len=5) :: GTYP_LIST(4) ! crop, tree, grass, shrub
+      character(len=5) :: GtID
+      character(len=25), allocatable :: var_list(:),var_desc(:),var_unit(:) !19 EF + 4 LDF
       real  :: EF(23)
       real  :: EFi
-      integer :: EcoID
-      character(len=50) :: GtID
 
       print*,"Building MEGAN_EFS & MEGAN_LDF ..."
       
@@ -377,15 +380,16 @@ contains
  
       allocate( ECOTYPE(g%nx, g%ny   ))   !growthtype fracs
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
-                                                                              
+      allocate(var_list(23),var_desc(23),var_unit(23))
       !Levanto netcdf input files
-      file_list=(/cropfile,treefile,grassfile,shrubfile/)
-      gtyp_list=(/'crop ','tree ','herb ','shrub'/)
  
       call check(nf90_open(trim(ecotypefile), nf90_write, ncid ))
            call check(   nf90_inq_varid(ncid,'Band1', var_id   ))
            call check(   nf90_get_var(ncid, var_id , ECOTYPE   ))
       call check(nf90_close(ncid ))
+
+      file_list=(/cropfile,treefile,grassfile,shrubfile/)
+      GTYP_LIST=(/'crop ','tree ','herb ','shrub'/)
       do k=1,4
           call check(nf90_open(trim(file_list(k)), nf90_write, ncid ))
                call check(   nf90_inq_varid(ncid,'Band1', var_id ))
@@ -398,13 +402,13 @@ contains
 
      !Opcion 1:
      !Arranco con una tabla: (La hago con awk o similar)
-     !ecotypeID   growtypeId   var1,   var2, ... ,  var19,  var20, ... ,  var23
-     !1           crop         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !2           crop         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !3           crop         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !4           crop         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !...         ....         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !1700        tree         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !growtypeId   ecotypeID   var1,   var2, ... ,  var19,  var20, ... ,  var23
+     !crop         1           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !crop         2           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !crop         3           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !crop         4           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !....         ...         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
+     !tree         1700        EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
  
      allocate(TMPGTYP(g%nx, g%ny   ))   !Acá voy poniendo los EF/LDF temporalmente
      allocate(OUTGRID(g%nx, g%ny,23))   !outgrids EF1,EF2,...,LDF1,LDF2,..
@@ -412,10 +416,10 @@ contains
 
      open(unit=1,file='./db/GtEcoEF.csv',status='old',action='read')
        iostat=0
-       do while(iostat == 0)      !loop por cada fila specFile
-          read(k,*,iostat=iostat) EcoID,GtID,EF
+       do while(iostat == 0)                            !loop por cada fila
+          read(1,*,iostat=iostat)GtID,EcoID,EF
           
-          j=FINDLOC(GTYP_LIST, GtID) 
+          j=FINDLOC(GTYP_LIST, GtID,1)
           TMPGTYP=GTYP(:,:,j)
               
           do i=1,23    !nvars: EF/LDF
@@ -429,38 +433,43 @@ contains
        enddo !each row.
      close(1)
  
+     
+     !open(unit=4,file='dump.csv',status='new',action='write')
+     !write(4,*) OUTGRID(:,:,:)
+     !close(4)
+
      deallocate(TMPGRID)
      deallocate(TMPGTYP)
      deallocate(GTYP)
      deallocate(ECOTYPE)
 
-     var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO","LDF03","LDF04","LDF05","LDF06" /)
-     var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO","LDF03","LDF04","LDF05","LDF06" /)
-     var_unit=(/"nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension" /)
+     !var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO","LDF03","LDF04","LDF05","LDF06" /)
+     !var_list=(/"EF_ISOP","EF_MBO","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO","EF_SQT_HR","EF_SQT_LR","EF_MEOH","EF_ACTO","EF_ETOH","EF_ACID","EF_LVOC","EF_OXPROD","EF_STRESS","EF_OTHER","EF_CO","LDF03","LDF04","LDF05","LDF06" /)
+     !var_unit=(/"nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension","nondmension" /)
    
-     !EF.nc ==============================
-     ! Create the NetCDF file
-     call createNetCDF(outFileEF,p,g,var_list,var_unit,var_desc)
-     !Abro NetCDF outFile
-     call check(nf90_open(outFileEF, nf90_write, ncid       ))
-      do k=1, 19       
-        call check(nf90_inq_varid(ncid,var_list(k) ,var_id))               
-        call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
-      enddo
-     call check(nf90_close( ncid ))
-     !Cierro NetCDF outFile================
+     !!EF.nc ==============================
+     !! Create the NetCDF file
+     !call createNetCDF(outFileEF,p,g,var_list,var_unit,var_desc)
+     !!Abro NetCDF outFile
+     !call check(nf90_open(outFileEF, nf90_write, ncid       ))
+     ! do k=1, 19       
+     !   call check(nf90_inq_varid(ncid,var_list(k) ,var_id))               
+     !   call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
+     ! enddo
+     !call check(nf90_close( ncid ))
+     !!Cierro NetCDF outFile================
  
-     !LDF.nc ==============================
-     ! Create the NetCDF file
-     call createNetCDF(outFileLDF,p,g,var_list,var_unit,var_desc)
-     !Abro NetCDF outFile
-     call check(nf90_open(outFileLDF, nf90_write, ncid       ))
-      do k=20,23       
-        call check(nf90_inq_varid(ncid,var_list(k) ,var_id))               
-        call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
-      enddo
-     call check(nf90_close( ncid ))
-     !Cierro NetCDF outFile================
+     !!LDF.nc ==============================
+     !! Create the NetCDF file
+     !call createNetCDF(outFileLDF,p,g,var_list,var_unit,var_desc)
+     !!Abro NetCDF outFile
+     !call check(nf90_open(outFileLDF, nf90_write, ncid       ))
+     ! do k=20,23       
+     !   call check(nf90_inq_varid(ncid,var_list(k) ,var_id))               
+     !   call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
+     ! enddo
+     !call check(nf90_close( ncid ))
+     !!Cierro NetCDF outFile================
 
      deallocate(OUTGRID)
    end subroutine
