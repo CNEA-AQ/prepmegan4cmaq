@@ -54,7 +54,7 @@ program prepmegan4cmaq
 
   !!`MEGAN_LDF` (*Light Dependence Fractions*)
   !!`MEGAN_EFS` (emission factors).
-  call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
+  !call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
   
   !!Archivos para BDSNP: (Solo es regrillar netcdf):
   !call BDSNP_AFILE()   !int Arid (0/1)
@@ -494,6 +494,8 @@ contains
         character(len=10) :: outfile
         character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
         integer :: nvars
+        integer :: lt
+        character(len=2) ::landtypeId
 
         outfile='LAND.nc'
         nvars=3
@@ -504,7 +506,14 @@ contains
 
         LANDGRID(:,:,1) = get2DvarFromNetCDFint( arid_file, 'Band1', g%nx, g%ny)
         LANDGRID(:,:,2) = get2DvarFromNetCDFint(narid_file, 'Band1', g%nx, g%ny)
-        LANDGRID(:,:,3) =LANDGRID(:,:,3)+get2DvarFromNetCDFint(   lt_file, 'Band1', g%nx, g%ny)
+        
+        LANDGRID(:,:,3) =0.0 
+        do lt=1,24
+                write(landtypeId, '(I0.2)') lt
+                !LANDGRID(:,:,3) =LANDGRID(:,:,3)+get2DvarFromNetCDFint(   lt_file, 'Band1', g%nx, g%ny)
+                print*,trim(lt_file)//landtypeId//".nc"
+                LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt* get2DvarFromNetCDFint(trim(lt_file)//landtypeId//".nc", 'Band1', g%nx, g%ny)
+        enddo
 
         var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
         var_unit=(/ '1 or 0      ','1 or 0      ','nondimension'/)
