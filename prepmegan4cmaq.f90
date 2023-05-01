@@ -28,13 +28,13 @@ program prepmegan4cmaq
 
   integer :: status,iostat
   integer :: i,j,k
-  integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
+  !integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
   logical :: file_exists
 
-  character(len=17)  ::start_date,end_date
-  character(200) :: griddesc_file,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file
+  character(len=17):: start_date,end_date
+  character(200)   :: griddesc_file,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
-  namelist/control/start_date,end_date,griddesc_file,  crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file
+  namelist/control/start_date,end_date,griddesc_file,  crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
   !Leo namelist:
   read(*,nml=control, iostat=iostat)
@@ -52,18 +52,15 @@ program prepmegan4cmaq
   !`MEGAN_LAI` (Leaf Area Index).
   !call build_LAIv(grid,proj,laiv_files)
 
-  !!`MEGAN_LDF` (*Light Dependence Fractions*)
-  !!`MEGAN_EFS` (emission factors).
-  !call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
+  !!`MEGAN_LDF` (*Light Dependence Fractions*) & `MEGAN_EFS` (emission factors).
+  call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
   
   !!Archivos para BDSNP: (Solo es regrillar netcdf):
-  !call BDSNP_AFILE()   !int Arid (0/1)
-  !call BDSNP_NAFILE()  !int Non-Arid (0/1)
-  !call BDSNP_LFILE()   !int Land types (1:24)
-  call BDSNP_LAND(grid,proj, arid_file, narid_file, lt_file)
+  !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
+  call BDSNP_LAND(grid,proj,arid_file,narid_file,lt_file)
 
-  !call BDSNP_FFILE()   !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
-  !call BDSNP_NFILE()   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
+  call BDSNP_NFILE(grid,proj,nitro_files)   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
+  !call BDSNP_FFILE()                       !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
 
 print*, "========================================="
 print*, " prepmegan4cmaq: Completed successfully"
@@ -135,7 +132,8 @@ contains
     type(proj_type) , intent(in) :: p
     character(len=10), intent(in) :: outFile
     character(len=25), allocatable:: var_list(:),var_unit(:),var_desc(:)
-    integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
+    !integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
+    integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
     integer :: nvars
     real :: missing_value
     character(800) :: var_list_string
@@ -256,7 +254,7 @@ contains
     allocate(var_list(nvars))  
     allocate(var_unit(nvars))  
     allocate(var_desc(nvars))  
-    allocate(CTS(grid%nx,grid%ny,nvars))  
+    allocate(CTS(g%nx,g%ny,nvars))  
  
     CTS(:,:,1)=get2DvarFromNetCDF(    treefile, "Band1", g%nx, g%ny)
     CTS(:,:,2)=get2DvarFromNetCDF(   shrubfile, "Band1", g%nx, g%ny)
@@ -329,7 +327,7 @@ contains
     allocate(var_list(nvars))  
     allocate(var_unit(nvars))  
     allocate(var_desc(nvars))  
-    allocate(LAIv(grid%nx,grid%ny,nvars))  
+    allocate(LAIv(g%nx,g%ny,nvars))  
  
     !Levanto netcdf input files
     do k=1,nvars
@@ -485,51 +483,103 @@ contains
  !  BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE
  !---------------------------------
   subroutine BDSNP_LAND(g,p,arid_file, narid_file,lt_file)
-        implicit none
-        type(grid_type) ,intent(in) :: g
-        type(proj_type) ,intent(in) :: p
-        character(len=200),intent(in) :: arid_file,narid_file,lt_file
-        real, allocatable :: LANDGRID(:,:,:)
-        integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
-        character(len=10) :: outfile
-        character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
-        integer :: nvars
-        integer :: lt
-        character(len=2) ::landtypeId
+     implicit none
+     type(grid_type) ,intent(in) :: g
+     type(proj_type) ,intent(in) :: p
+     character(len=200),intent(in) :: arid_file,narid_file,lt_file
+     real, allocatable :: LANDGRID(:,:,:)
+     integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
+     character(len=10) :: outfile
+     character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
+     integer :: nvars
+     integer :: lt
+     character(len=2) ::landtypeId
 
-        outfile='LAND.nc'
-        nvars=3
-        allocate(LANDGRID(g%nx,g%ny,nvars))
-        allocate(var_list(nvars))
-        allocate(var_unit(nvars))
-        allocate(var_desc(nvars))
+     print*,"Building BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE ..."
+     outfile='LAND.nc'
+     nvars=3
+     allocate(LANDGRID(g%nx,g%ny,nvars))
+     allocate(var_list(nvars))
+     allocate(var_unit(nvars))
+     allocate(var_desc(nvars))
 
-        LANDGRID(:,:,1) = get2DvarFromNetCDFint( arid_file, 'Band1', g%nx, g%ny)
-        LANDGRID(:,:,2) = get2DvarFromNetCDFint(narid_file, 'Band1', g%nx, g%ny)
-        
-        LANDGRID(:,:,3) =0.0 
-        do lt=1,24
-                write(landtypeId, '(I0.2)') lt
-                !LANDGRID(:,:,3) =LANDGRID(:,:,3)+get2DvarFromNetCDFint(   lt_file, 'Band1', g%nx, g%ny)
-                print*,trim(lt_file)//landtypeId//".nc"
-                LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt* get2DvarFromNetCDFint(trim(lt_file)//landtypeId//".nc", 'Band1', g%nx, g%ny)
-        enddo
+     LANDGRID(:,:,1) = get2DvarFromNetCDFint( arid_file, 'Band1', g%nx, g%ny)
+     LANDGRID(:,:,2) = get2DvarFromNetCDFint(narid_file, 'Band1', g%nx, g%ny)
+     
+     LANDGRID(:,:,3) =0.0 
+     do lt=1,24
+             write(landtypeId, '(I0.2)') lt
+             !LANDGRID(:,:,3) =LANDGRID(:,:,3)+get2DvarFromNetCDFint(   lt_file, 'Band1', g%nx, g%ny)
+             print*,trim(lt_file)//landtypeId//".nc"
+             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt* get2DvarFromNetCDFint(trim(lt_file)//landtypeId//".nc", 'Band1', g%nx, g%ny)
+     enddo
 
-        var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
-        var_unit=(/ '1 or 0      ','1 or 0      ','nondimension'/)
-        var_desc=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
+     var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
+     var_unit=(/ '1 or 0      ','1 or 0      ','nondimension'/)
+     var_desc=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
 
-        ! Create the NetCDF file
-        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+     ! Create the NetCDF file
+     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
 
-        !Abro NetCDF outFile
-        call check(nf90_open(outFile, nf90_write, ncid       ))
-         do k=1, nvars    
-           call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
-           call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
-         enddo
-        call check(nf90_close( ncid ))
+     !Abro NetCDF outFile
+     call check(nf90_open(outFile, nf90_write, ncid       ))
+      do k=1, nvars    
+        call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
+        call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
+      enddo
+     call check(nf90_close( ncid ))
 
   end subroutine BDSNP_LAND
 
+  subroutine BDSNP_NFILE(g,p,nitro_files)   
+     implicit none
+     type(grid_type) ,intent(in) :: g
+     type(proj_type) ,intent(in) :: p
+     character(len=200),intent(in) :: nitro_files
+     real, allocatable :: NITRO(:,:,:)
+     integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
+     character(len=10) :: outfile
+     character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
+     integer :: nvars
+     integer :: k
+     character(len=2) ::kk
+                                                                            
+     print*,"Building BDSNP_NFILE ..."
+     outfile='NDEP.nc'
+     nvars=12
+
+     allocate(var_list(nvars))
+     allocate(var_unit(nvars))
+     allocate(var_desc(nvars))
+     allocate(NITRO(g%nx,g%ny,nvars))  
+                                                                             
+     !Levanto netcdf input files
+     do k=1,nvars
+         write(kk,'(I0.2)') k
+         call check(nf90_open(trim(nitro_files)//kk//".nc", nf90_write, ncid ))
+              call check(   nf90_inq_varid(ncid,'Band1', var_id ))
+              call check(   nf90_get_var(ncid, var_id , NITRO(:,:,k)  ))
+              where (NITRO < 0.0 )
+                      NITRO=0.0
+              endwhere
+         call check(nf90_close(ncid ))
+     enddo
+     NITRO=NITRO*1E+12! convert from kg/m2/s to ng/m2/s
+
+     var_list=(/ 'NITROGEN01','NITROGEN02','NITROGEN03','NITROGEN04','NITROGEN05','NITROGEN06','NITROGEN07','NITROGEN08','NITROGEN09','NITROGEN10','NITROGEN11','NITROGEN12' /)
+    var_unit = (/ "ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         " /) ;
+    var_desc = (/ "monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition" /)
+                                                                
+     ! Create the NetCDF file
+     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+                                                                
+     !Abro NetCDF outFile
+     call check(nf90_open(outFile, nf90_write, ncid       ))
+      do k=1, nvars    
+        call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
+        call check(nf90_put_var(ncid, var_id, NITRO(:,:,k)))
+      enddo
+     call check(nf90_close( ncid ))
+
+  end subroutine 
 end program

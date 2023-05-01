@@ -20,6 +20,8 @@ start_date='2019-01-01',
 !BDNP
          arid_file='./tmp_grids/arid.nc',     
         narid_file='./tmp_grids/nonarid.nc',  
-           lt_file='./tmp_grids/landtype'  
+           lt_file='./tmp_grids/landtype',  
 
+       nitro_files='./tmp_grids/nitro',
+       !fert_files='./tmp_grids/fert'
 /

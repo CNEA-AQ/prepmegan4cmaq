@@ -28,12 +28,12 @@ GRIDNAME="Argentina"
     ecotype_file='./input/EVT3b.nc'			#Gridded ecotypes ids     - file_path
 
      GtEcoEFfile="./db/GtEFbyEcotype.csv"		#Emission factor of each GT grouped by Ecotype
-##Input files for BDPN: (not implemented yet)
+##Input files for BDSNP:
         arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'		# arid mask file
      nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'     # non arid mask file
-     landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'             # 24 landtype files
+   landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'               # 24 landtype files
+ nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'              # soil NO deposition of each month
 #      fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'                     #
-#nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'              #
 
 #-------------------------------------------------
 #(0) Get grid & proj parameters from GRIDDESC:
@@ -64,21 +64,8 @@ else
 fi;
 
 echo "SRS of Output Grids: $srsOut"
-
-#xorig=-1970000;yorig=-2370000;
-#srsOut="+proj=lcc +lat_1=${truelat1} +lat_2=${truelat2} +lon_0=${stand_lon} +lat_0=${ref_lat} +a=6370000.0 +b=6370000.0 +units=m" 
-#nx=197;ny=237;nz=1;dx=20000;dy=20000;     #ncols,nrows,xcel, ycell
-
-#Proyección: armar srsOut en base a los parametros de GRIDDESC
-#srsOut="+proj=lcc +lat_1=${truelat1} +lat_2=${truelat2} +lon_0=${stand_lon} +lat_0=${ref_lat} +a=6370000.0 +b=6370000.0 +units=m" 
-
-#Grilla (sale de GRIDDESC)
-xmin=$xorig; 
-ymin=$yorig; 
-#xmax=$(( ${xorig} *-1 )); 
-#ymax=$(( ${yorig} *-1 ))
-xmax=$( bc -l <<<"${xorig} *-1 " )
-ymax=$( bc -l <<<"${yorig} *-1 " )
+#Grilla
+xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig} *-1 " );ymax=$( bc -l <<<"${yorig} *-1 " )
 #------------------------------------------------
 #(1) Re-gridding: Agarrar los inputs y regrillarlos (e interpolar) segun GRIDDESC.
 #interpolation methods: near (default), bilinear, cubic, cubicspline, lanczos, average, rms, mode,  max, min, med, Q1, Q3, sum
@@ -102,7 +89,7 @@ do
 	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 
 done
 
-echo "Regridding input files for BDNP..."
+echo "Regridding input files for BDSNP..."
 
 echo " $arid_file     ->    arid.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode -f "NetCDF"  $arid_file     ./tmp_grids/arid.nc 
 echo " $nonarid_file  -> nonarid.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode -f "NetCDF"  $nonarid_file  ./tmp_grids/nonarid.nc 
@@ -114,7 +101,13 @@ do
 	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode -f "NetCDF" ${landtype_files}${LT}* ./tmp_grids/landtype${LT}.nc 
 done
 
-#============================================
+echo " $nitro_depo_files        -> nitro.nc   "
+for MM in $(seq --format='%02.0f' 1 1 12)
+do
+	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${nitro_depo_files}${MM}* ./tmp_grids/nitro${MM}.nc 
+done
+
+#(2) Llamar a programa en Fortran que ensamble todas las grillas y hace los calculos pertinentes
 #Armo namelist input para prepmegan4cmaq.exe
 cat << EOF > example.inp 
 &control
@@ -136,22 +129,20 @@ start_date='${start_date}',
       ecotype_file='./tmp_grids/ecotype.nc',				
 
       GtEcoEF_file='${GtEcoEFfile}',
-!BDNP
+!BDSNP
          arid_file='./tmp_grids/arid.nc',     
         narid_file='./tmp_grids/nonarid.nc',  
-           lt_file='./tmp_grids/landtype'  
+           lt_file='./tmp_grids/landtype',  
 
+       nitro_files='./tmp_grids/nitro',
+       !fert_files='./tmp_grids/fert'
 /
 EOF
 
-#(2) Llamar a programa en Fortran que ensamble todas las grillas y hace los calculos pertinentes
-#./prepmegan4cmaq.exe < example.inp
+./prepmegan4cmaq.exe < example.inp
 
 
-
-
-
-
+#####################################################################
 #GRIDDESC proj params (para usarlo para armar los srsOut):
 #
 #GT==2:

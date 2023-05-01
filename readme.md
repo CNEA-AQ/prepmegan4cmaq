@@ -63,7 +63,7 @@ Please feel free to contact the developer if you have any issues or suggestions.
 
 
 ## Planned future improvements:
- + [ ] BDNP (Fert & Nitro deposition) support
+ + [ ] BDNP Fert support
  + [ ] Roboust GRIDDESC reader
  + [ ] Write temporal-dependent data only for the month within startdate and enddate
 
