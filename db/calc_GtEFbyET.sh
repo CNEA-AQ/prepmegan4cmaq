@@ -64,7 +64,7 @@ NR != FNR {
    }
 } 
 END {
-   for (i in EFe) {                     #Es posible que acá este haciendo más loops que lo necesario.
+   for (i in EFe) {                     #Es posible que acá este haciendo más loops de lo necesario.
        split(i,a,SUBSEP);
        printf("%s,%s", a[1],a[2])
        for (j = 1; j < n; j++) {

@@ -1,6 +1,6 @@
 !---------------------------------------------------------------
 ! author: Ramiro A. Espada. April 2023.
-! Based on Prep_code, MEGEFP32 (UCI-BAI-MEGAN) and megan_bio_emis.f90 (NCAR)
+! Based on Prep_code &  MEGEFP32 (UCI-BAI-MEGAN)
 !---------------------------------------------------------------
 program prepmegan4cmaq
 
@@ -11,14 +11,14 @@ program prepmegan4cmaq
      character(16)    :: pName     ! nombre de la proyeccion
      character(7)     :: typ_str   ! String  code for projection TYPE
      integer          :: typ       ! Integer code for projection TYPE
-     real             :: ref_lat,ref_lon,truelat1,truelat2,stand_lon,pole_lat,pole_lon
+     real             :: alp,bet,gam,xcent,ycent!ref_lat,ref_lon,truelat1,truelat2,stand_lon,pole_lat,pole_lon
      character(125)   :: proj4     ! PROJ4 srs definition.
   end type proj_type
 
   type grid_type
-      character(12)    :: gName        !grid-name
-      integer          :: nx,ny,nz     !number of cells in x-y direction (ncols, nrows, nlevs)
-      real             :: dx,dy        !x-y cell dimension (x_cell, y_cell)
+      character(12)    :: gName     !grid-name
+      integer          :: nx,ny,nz  !number of cells in x-y direction (ncols, nrows, nlevs)
+      real             :: dx,dy     !x-y cell dimension (x_cell, y_cell)
       real             :: xmin,ymin,xmax,ymax,xc,yc
       real             :: lonmin,latmin,lonmax,latmax
    end type grid_type
@@ -28,13 +28,11 @@ program prepmegan4cmaq
 
   integer :: status,iostat
   integer :: i,j,k
-  !integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
-  logical :: file_exists
 
   character(len=17):: start_date,end_date
-  character(200)   :: griddesc_file,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
+  character(200)   :: griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
-  namelist/control/start_date,end_date,griddesc_file,  crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
+  namelist/control/start_date,end_date,griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
   !Leo namelist:
   read(*,nml=control, iostat=iostat)
@@ -52,10 +50,10 @@ program prepmegan4cmaq
   !`MEGAN_LAI` (Leaf Area Index).
   !call build_LAIv(grid,proj,laiv_files)
 
-  !!`MEGAN_LDF` (*Light Dependence Fractions*) & `MEGAN_EFS` (emission factors).
+  !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
   call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
   
-  !!Archivos para BDSNP: (Solo es regrillar netcdf):
+  !!Archivos para BDSNP:
   !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
   call BDSNP_LAND(grid,proj,arid_file,narid_file,lt_file)
 
@@ -119,7 +117,7 @@ contains
         open(2,file=griddescFile, status='old', action='read')                   !GRIDDESC:
            read(2,*) dummyvar;                                                   !' '
            read(2,*) p%pName;                                                    !projName
-           read(2,*) p%typ,p%truelat1,p%truelat2,p%stand_lon,p%ref_lon,p%ref_lat !map_proj truelat1 truelat2 stand_lon ref_lon ref_lat
+           read(2,*) p%typ,p%alp,p%bet,p%gam,p%xcent,p%ycent                     !map_proj truelat1 truelat2 stand_lon ref_lon ref_lat
            read(2,*) dummyvar;                                                   !' '
            read(2,*) g%gName;                                                    !gridName
            read(2,*) p%pName,g%xmin,g%ymin,g%dx,g%dy,g%nx,g%ny                   !projName xorig yorig xcell ycell nrows ncols
@@ -132,10 +130,8 @@ contains
     type(proj_type) , intent(in) :: p
     character(len=10), intent(in) :: outFile
     character(len=25), allocatable:: var_list(:),var_unit(:),var_desc(:)
-    !integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
     integer :: nvars
-    real :: missing_value
     character(800) :: var_list_string
  
     nvars=size(var_list)
@@ -149,13 +145,11 @@ contains
         call check(nf90_def_dim(ncid, "ROW"      , g%ny   , row_dim_id       ))
         call check(nf90_def_dim(ncid, "LAY"      ,   1    , lay_dim_id       ))
         call check(nf90_def_dim(ncid, "VAR"      , nvars  , var_dim_id       ))
- 
         !Defino variables
         call check(nf90_def_var(ncid,"TFLAG",NF90_FLOAT    , [date_time_dim_id,var_dim_id,tstep_dim_id], var_id))
         call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
         call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
         call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
- 
         do k=1, nvars
           call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
           call check(nf90_put_att(ncid, var_id,"units"    , trim(var_unit(k)) ))
@@ -166,37 +160,37 @@ contains
         call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: \$Id: init3" ))
         call check(nf90_put_att(ncid, nf90_global,"EXEC_ID"  , "????????????????"   ))
         call check(nf90_put_att(ncid, nf90_global,"FTYPE"    , 1                    ))
-        call check(nf90_put_att(ncid, nf90_global,"SDATE"    , 2023001              ))   !int
+        call check(nf90_put_att(ncid, nf90_global,"SDATE"    , 2023001              ))!stat_date (int)
         call check(nf90_put_att(ncid, nf90_global,"STIME"    , 000000               ))
         call check(nf90_put_att(ncid, nf90_global,"WDATE"    , 2023001              ))
         call check(nf90_put_att(ncid, nf90_global,"WTIME"    , 000000               ))
         call check(nf90_put_att(ncid, nf90_global,"CDATE"    , 2023001              ))
         call check(nf90_put_att(ncid, nf90_global,"CTIME"    , 000000               ))
         call check(nf90_put_att(ncid, nf90_global,"TSTEP"    , 10000                ))
-        call check(nf90_put_att(ncid, nf90_global,"NTHIK"    , 1                    ))
+        call check(nf90_put_att(ncid, nf90_global,"NTHIK"    , 1                    ))!no sé que es.
         call check(nf90_put_att(ncid, nf90_global,"NCOLS"    , g%nx                 ))
         call check(nf90_put_att(ncid, nf90_global,"NROWS"    , g%ny                 ))
         call check(nf90_put_att(ncid, nf90_global,"NLAYS"    , 1                    ))!grid%nz
         call check(nf90_put_att(ncid, nf90_global,"NVARS"    , nvars                ))
-        call check(nf90_put_att(ncid, nf90_global,"GDTYP"    , 1                    ))
-        call check(nf90_put_att(ncid, nf90_global,"P_ALP"    , -50.                 ))
-        call check(nf90_put_att(ncid, nf90_global,"P_BET"    , -20.                 ))
-        call check(nf90_put_att(ncid, nf90_global,"P_GAM"    , -65.                 ))
-        call check(nf90_put_att(ncid, nf90_global,"XCENT"    , p%ref_lon            ))
-        call check(nf90_put_att(ncid, nf90_global,"YCENT"    , p%ref_lat            ))
+        call check(nf90_put_att(ncid, nf90_global,"GDTYP"    , p%typ                ))
+        call check(nf90_put_att(ncid, nf90_global,"P_ALP"    , p%alp                ))
+        call check(nf90_put_att(ncid, nf90_global,"P_BET"    , p%bet                ))
+        call check(nf90_put_att(ncid, nf90_global,"P_GAM"    , p%gam                ))
+        call check(nf90_put_att(ncid, nf90_global,"XCENT"    , p%xcent              ))
+        call check(nf90_put_att(ncid, nf90_global,"YCENT"    , p%ycent              ))
         call check(nf90_put_att(ncid, nf90_global,"XORIG"    , g%xmin               ))
         call check(nf90_put_att(ncid, nf90_global,"YORIG"    , g%ymin               ))
         call check(nf90_put_att(ncid, nf90_global,"XCELL"    , g%dx                 ))
         call check(nf90_put_att(ncid, nf90_global,"YCELL"    , g%dy                 ))
-        call check(nf90_put_att(ncid, nf90_global,"VGTYP"    , -9999                ))
-        call check(nf90_put_att(ncid, nf90_global,"VGTOP"    , 5000.                ))
-        call check(nf90_put_att(ncid, nf90_global,"VGLVLS"   , [1., 0.9938147 ]     ))
+        call check(nf90_put_att(ncid, nf90_global,"VGTYP"    , -9999                ))!no sé que es.
+        call check(nf90_put_att(ncid, nf90_global,"VGTOP"    , 5000.                ))!no sé que es.
+        call check(nf90_put_att(ncid, nf90_global,"VGLVLS"   , [1., 0.9938147 ]     ))!no sé que es.
         call check(nf90_put_att(ncid, nf90_global,"GDNAM"    , g%gName              ))
-        call check(nf90_put_att(ncid, nf90_global,"UPNAM"    , "OUTCM3IO"           ))
+        call check(nf90_put_att(ncid, nf90_global,"UPNAM"    , "OUTCM3IO"           ))!no sé que es.
         call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, nvars*16, adjustl(var_list_string)))
-        call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "Fire emission file" ))
+        call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
         call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
- 
+
      call check(nf90_enddef(ncid))
      !End NetCDF define mode
  end subroutine createNetCDF
@@ -241,10 +235,11 @@ contains
     type(proj_type) ,intent(in) :: p
     character(len=200) :: cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile
     real, allocatable :: CTS(:,:,:)
-    integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
     character(len=10) :: outfile
     character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
     integer :: nvars
+    integer :: var_id,ncid
+
  
     print*,"Building MEGAN_CTS file ..."
  
@@ -268,7 +263,7 @@ contains
  
     var_list=(/ 'NEEDL      '     ,'TROPI      ' ,'BROAD      ','SHRUB      ','HERB       ','CROP       '/)
     var_desc=(/ "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","crop fraction          ","grass fraction         " /) 
-    var_unit=(/ "nondimension","nondimension","nondimension","nondimension","nondimension","nondimension" /)
+    var_unit=spread("nondimension",1,nvars)
  
     ! Create the NetCDF file
     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
@@ -312,12 +307,11 @@ contains
     type(proj_type) ,intent(in) :: p
     character(len=200) :: laivfile
     real, allocatable :: LAIv(:,:,:)
-    integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
     character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
     character(len=10) :: outfile
+    integer ::var_id,ncid
     integer :: nvars
     character(len=2)::kk
-    real :: missing_value
     
     print*,"Building MEGAN_LAI file ..."
     
@@ -332,18 +326,15 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        call check(nf90_open(trim(laivfile)//kk//".nc", nf90_write, ncid ))
-             call check(   nf90_inq_varid(ncid,'Band1', var_id ))
-             call check(   nf90_get_var(ncid, var_id , LAIv(:,:,k)  ))
-             where (LAIv < 0.0 )
-                     LAIv=0.0
-             endwhere
-        call check(nf90_close(ncid ))
+        LAIv(:,:,k)=get2DvarFromNetCDF(trim(laivfile)//kk//".nc", "Band1", g%nx, g%ny)
     enddo
-  
+    where (LAIv < 0.0 )
+            LAIv=0.0
+    endwhere
+
     var_list=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
     var_desc=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
-    var_unit=(/"nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension","nondimension" /)
+    var_unit=spread("nondimension",1,nvars)
  
     !Creo NetCDF file
     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
@@ -370,11 +361,9 @@ contains
       type(grid_type) ,intent(in) :: g
       type(proj_type) ,intent(in) :: p
       character(len=50),intent(in) :: ecotypefile,cropfile,treefile,grassfile,shrubfile,GtEcoEF_file
-      integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
       character(len=10) :: outfileEF,outfileLDF
-      real :: missing_value
-      character(len=300) header
       integer i,j,k
+      integer :: var_id,ncid
       
       real,    allocatable :: GTYP(:,:,:)       !growth type fraction
       integer, allocatable :: ECOTYPE(:,:)      !este puede ser int tamb
@@ -384,11 +373,12 @@ contains
       character(len=5) :: GTYP_LIST(4) ! crop, tree, grass, shrub
       character(len=5) :: GtID
       character(len=25), allocatable :: var_list(:),var_desc(:),var_unit(:) !19 EF + 4 LDF
+      integer :: nvars
       real  :: EF(23)
-      real  :: EFi
 
       print*,"Building MEGAN_EFS & MEGAN_LDF ..."
       
+      nvars=23
        outfileEF='EFMAP.nc'
       outfileLDF='LDF.nc'
  
@@ -431,7 +421,7 @@ contains
           
           if (j /= FINDLOC(GTYP_LIST, GtID,1) ) then
                 j=FINDLOC(GTYP_LIST, GtID,1)
-                print*,"procesando GT: "//GtID
+                print*,"   Processing Growth-type: "//GtID
           endif
           !=======> (!) ACÁ está el cuello de botella <=====
           do i=1,23    !nvars: EF/LDF
@@ -448,9 +438,9 @@ contains
       
      allocate(var_list(23),var_desc(23),var_unit(23))
 
-     var_list=(/     "EF_ISOP   ",     "EF_MBO    ",     "EF_MT_PINE",     "EF_MT_ACYC",     "EF_MT_CAMP",     "EF_MT_SABI",     "EF_MT_AROM",     "EF_NO     ",     "EF_SQT_HR ",     "EF_SQT_LR ",     "EF_MEOH   ",     "EF_ACTO   ",     "EF_ETOH   ",     "EF_ACID   ",     "EF_LVOC   ",     "EF_OXPROD ",     "EF_STRESS ",     "EF_OTHER  ",     "EF_CO     ",     "LDF03     ",     "LDF04     ",     "LDF05     ",     "LDF06     " /)
-     var_desc=(/     "EF_ISOP   ",     "EF_MBO    ",     "EF_MT_PINE",     "EF_MT_ACYC",     "EF_MT_CAMP",     "EF_MT_SABI",     "EF_MT_AROM",     "EF_NO     ",     "EF_SQT_HR ",     "EF_SQT_LR ",     "EF_MEOH   ",     "EF_ACTO   ",     "EF_ETOH   ",     "EF_ACID   ",     "EF_LVOC   ",     "EF_OXPROD ",     "EF_STRESS ",     "EF_OTHER  ",     "EF_CO     ",     "LDF03     ",     "LDF04     ",     "LDF05     ",     "LDF06     " /)
-     var_unit=(/"nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nanomol/m^2/s","nondimension ","nondimension ","nondimension ","nondimension " /)
+     var_list=(/"EF_ISOP   ","EF_MBO    ","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO     ","EF_SQT_HR ","EF_SQT_LR ", "EF_MEOH   ","EF_ACTO   ","EF_ETOH   ","EF_ACID   ","EF_LVOC   ","EF_OXPROD ","EF_STRESS ","EF_OTHER  ","EF_CO     ", "LDF03     ", "LDF04     ", "LDF05     ", "LDF06     " /)
+     var_desc=var_list
+     var_unit=spread("nanomol/m^2/s",1,nvars)
    
      !EF.nc ==============================
      ! Create the NetCDF file
@@ -488,15 +478,15 @@ contains
      type(proj_type) ,intent(in) :: p
      character(len=200),intent(in) :: arid_file,narid_file,lt_file
      real, allocatable :: LANDGRID(:,:,:)
-     integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
-     character(len=10) :: outfile
      character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
+     integer :: var_id,ncid
      integer :: nvars
      integer :: lt
      character(len=2) ::landtypeId
+     character(len=10) :: outfile
 
      print*,"Building BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE ..."
-     outfile='LAND.nc'
+     outfile='LAND.nc'!(/"ARID.nc    ", "LANDTYPE.nc", "NONARID.nc "/) !
      nvars=3
      allocate(LANDGRID(g%nx,g%ny,nvars))
      allocate(var_list(nvars))
@@ -509,26 +499,23 @@ contains
      LANDGRID(:,:,3) =0.0 
      do lt=1,24
              write(landtypeId, '(I0.2)') lt
-             !LANDGRID(:,:,3) =LANDGRID(:,:,3)+get2DvarFromNetCDFint(   lt_file, 'Band1', g%nx, g%ny)
-             print*,trim(lt_file)//landtypeId//".nc"
              LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt* get2DvarFromNetCDFint(trim(lt_file)//landtypeId//".nc", 'Band1', g%nx, g%ny)
      enddo
 
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
-     var_unit=(/ '1 or 0      ','1 or 0      ','nondimension'/)
+     var_unit=spread('1 or 0      ',1,nvars) 
      var_desc=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
-
+      
      ! Create the NetCDF file
      call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
 
      !Abro NetCDF outFile
      call check(nf90_open(outFile, nf90_write, ncid       ))
-      do k=1, nvars    
+     do k=1, nvars    
         call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
         call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
-      enddo
+     enddo
      call check(nf90_close( ncid ))
-
   end subroutine BDSNP_LAND
 
   subroutine BDSNP_NFILE(g,p,nitro_files)   
@@ -537,9 +524,9 @@ contains
      type(proj_type) ,intent(in) :: p
      character(len=200),intent(in) :: nitro_files
      real, allocatable :: NITRO(:,:,:)
-     integer :: date_time_dim_id,var_dim_id,lev_id,tstep_dim_id,var_id,ncid
      character(len=10) :: outfile
      character(len=25),allocatable :: var_list(:),var_desc(:),var_unit(:)
+     integer :: var_id,ncid
      integer :: nvars
      integer :: k
      character(len=2) ::kk
@@ -567,8 +554,8 @@ contains
      NITRO=NITRO*1E+12! convert from kg/m2/s to ng/m2/s
 
      var_list=(/ 'NITROGEN01','NITROGEN02','NITROGEN03','NITROGEN04','NITROGEN05','NITROGEN06','NITROGEN07','NITROGEN08','NITROGEN09','NITROGEN10','NITROGEN11','NITROGEN12' /)
-    var_unit = (/ "ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         ","ng/m2/s         " /) ;
-    var_desc = (/ "monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition","monthly average total nitrogen deposition" /)
+    var_unit = spread( "ng/m2/s         ",1,nvars)
+    var_desc=spread("monthly average total nitrogen deposition",1,nvars) 
                                                                 
      ! Create the NetCDF file
      call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)

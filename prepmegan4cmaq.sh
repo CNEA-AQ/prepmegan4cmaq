@@ -8,32 +8,32 @@ export LC_NUMERIC="en_US.UTF-8"
 start_date="2019-01-01"	#"%Y-%m-%d %H"
   end_date="2019-01-01"	#"%Y-%m-%d %H"
 
-   srsInp="epsg:4326"	#Cambiar <solo si> los archivos NO vienen en latlon.
+  srsInp="epsg:4326"	#(latlon spatial reference system of input files)
 
 GRIDDESC_file="./GRIDDESC_example"
 GRIDNAME="Argentina"
-
+   
 #Input Files:
-      laiv_files='./input/laiv2003'			#(LAIv=LAI/VEGCOVER) file path just the name before the month indicator!
+       laiv_files='./input/laiv2003'			 #LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
 
-      crop_frac_file='./input/GF3aCrop.nc' 		#frac of crop cover       - file path
-     grass_frac_file='./input/GF3aGrass.nc'		#frac of grass cover      - file path
-     shrub_frac_file='./input/GF3aShrub.nc'		#frac of shrubs cover     - file path
-      tree_frac_file='./input/GF3aTree.nc'		#frac of trees cover      - file path
+   crop_frac_file='./input/GF3aCrop.nc' 		 #frac of crop   cover (%) - netCDF file path
+  grass_frac_file='./input/GF3aGrass.nc'		 #frac of grass  cover (%) - netCDF file path
+  shrub_frac_file='./input/GF3aShrub.nc'		 #frac of shrubs cover (%) - netCDF file path
+   tree_frac_file='./input/GF3aTree.nc'		         #frac of trees  cover (%) - netCDF file path
 
-   nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'	#frac of needleleaf trees - file path
-   tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'	#frac of tropical   trees - file path
-#  bl_tree_frac_file='./input/BLfrac_reorder_lat.nc'	#frac of broadleaf  trees - file_path
+nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'	 #frac of needleleaf trees (%) - netCDF file path
+tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'	 #frac of tropical   trees (%) - netCDF file path
 
-    ecotype_file='./input/EVT3b.nc'			#Gridded ecotypes ids     - file_path
+     ecotype_file='./input/EVT3b.nc'			 #Gridded ecotypes ids         - netCDF file_path
 
-     GtEcoEFfile="./db/GtEFbyEcotype.csv"		#Emission factor of each GT grouped by Ecotype
-##Input files for BDSNP:
-        arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'		# arid mask file
-     nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'     # non arid mask file
-   landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'               # 24 landtype files
- nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'              # soil NO deposition of each month
-#      fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'                     #
+     GtEcoEFfile="./db/GtEFbyEcotype.csv"		 #Emission factor of each GT grouped by Ecotype
+
+#Input files for BDSNP:
+arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'	         #     arid mask (0/1)- netCDF file path
+nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'   # non arid mask (0/1)- netCDF file path
+  landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'         # landtype           - netCDF files PREFIX
+  nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      # soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
+  #     fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             #Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
 
 #-------------------------------------------------
 #(0) Get grid & proj parameters from GRIDDESC:
@@ -63,6 +63,7 @@ else
    echo  "codigo de proyección invalido. COORDTYPE"; stop
 fi;
 
+echo "SRS of Input  Grids: $srsInp"
 echo "SRS of Output Grids: $srsOut"
 #Grilla
 xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig} *-1 " );ymax=$( bc -l <<<"${yorig} *-1 " )
@@ -115,6 +116,7 @@ start_date='${start_date}',
   end_date='${end_date}',
 
     griddesc_file='${GRIDDESC_file}'
+         gridname='${GRIDNAME}'
         
         laiv_files='./tmp_grids/laiv',				
 

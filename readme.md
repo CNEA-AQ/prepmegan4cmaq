@@ -9,14 +9,14 @@
 
 ## Get MEGAN input data:
 
-All the data required to run this pre-procesor is freely available from [UCI BAI webpage](https://bai.ess.uci.edu/megan/data-and-code/) and has been produced by the team of Alex Guenther.
+All the data required to run this pre-processor is freely available from [UCI BAI webpage](https://bai.ess.uci.edu/megan/data-and-code/) and has been produced by the team of Alex Guenther.
 
 Data required:
 + Leaf Area Index / Vegetation Cover Fraction (LAIv)
-+ Growth Form (fraction): crops, grass, shurbs, tree.
++ Growth Form (fraction): crop, grass, shurb, tree.
 + Canopy type (fraction): tropical trees, needleleaf trees.
 + Ecotype
-+ Soil data (for BDSNP soil NO algorithm): Fertilizer, Land Fraction, Climate data (arid/non-arid), Nitrogen deposition.
++ Soil data (for BDSNP soil NO algorithm): Land type, Climate data (arid/non-arid), Nitrogen deposition and soil Nitrogen from fertilizers.
 
 
 ## Build
@@ -26,28 +26,45 @@ Edit the Makefile to set the compiler and path to NetCDF lib and include files. 
 
 If the compilation is successful, the executable `prepmegan4cmaq.exe` should be created.
 
+The command `gdalwarp` (from GDAL/OGR) is used to regrid, interpolate and reproject the inputs grids, you can get it with `sudo` in ubuntu linux distributions by:
+
+`> sudo apt install gdal-bin`
+
 ## Run
 
 Edit the header of `prepmegan4cmaq.sh` script that contains the following variables:
 
 ```shell
+#Input-Data:
 start_date="2019-01-01" #"%Y-%m-%d %H"
   end_date="2019-01-01" #"%Y-%m-%d %H"
 
-   srsInp="epsg:4326"   #Cambiar <solo si> los archivos NO vienen en latlon.
+  srsInp="epsg:4326"    #(latlon spatial reference system of input files)
 
 GRIDDESC_file="./GRIDDESC_example"
 GRIDNAME="Argentina"
 
-    crop_frac_file='./input/GF3aCrop.nc'             #frac of crop cover       - file path
-   grass_frac_file='./input/GF3aGrass.nc'            #frac of grass cover      - file path
-   shrub_frac_file='./input/GF3aShurb.nc'            #frac of shurbs cover     - file path
-    tree_frac_file='./input/GF3aTree.nc'             #frac of trees cover      - file path
- nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'   #frac of needleleaf trees - file path
- tp_tree_frac_file='./input/tropfrac_reorder_lat.nc' #frac of tropical   trees - file path
-#bl_tree_frac_file='./input/tropfrac_reorder_lat.nc' #frac of broadleaf  trees - file_path
-      ecotype_file='./input/EVT3b.nc'                #(not so clear what it represents) - file_path
-        laiv_files='./input/laiv2003'                #(LAIv=LAI/VEGCOVER) file path just the name before month indicator!
+#Input Files:
+       laiv_files='./input/laiv2003'                     #LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
+
+   crop_frac_file='./input/GF3aCrop.nc'                  #frac of crop   cover (%) - netCDF file path
+  grass_frac_file='./input/GF3aGrass.nc'                 #frac of grass  cover (%) - netCDF file path
+  shrub_frac_file='./input/GF3aShrub.nc'                 #frac of shrubs cover (%) - netCDF file path
+   tree_frac_file='./input/GF3aTree.nc'                  #frac of trees  cover (%) - netCDF file path
+
+nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'        #frac of needleleaf trees (%) - netCDF file path
+tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'      #frac of tropical   trees (%) - netCDF file path
+
+     ecotype_file='./input/EVT3b.nc'                     #Gridded ecotypes ids         - netCDF file_path
+
+     GtEcoEFfile="./db/GtEFbyEcotype.csv"                #Emission factor of each GT grouped by Ecotype
+
+#Input files for BDSNP:
+arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'          #     arid mask (0/1)- netCDF file path
+nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'   # non arid mask (0/1)- netCDF file path
+  landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'         # landtype           - netCDF files PREFIX
+  nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      # soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
+  #     fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             #Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
 
 ```
 
@@ -65,5 +82,4 @@ Please feel free to contact the developer if you have any issues or suggestions.
 ## Planned future improvements:
  + [ ] BDNP Fert support
  + [ ] Roboust GRIDDESC reader
- + [ ] Write temporal-dependent data only for the month within startdate and enddate
 
