@@ -3,6 +3,7 @@ start_date='2019-01-01',
   end_date='2019-01-01',
 
     griddesc_file='./GRIDDESC_example'
+         gridname='Argentina'
         
         laiv_files='./tmp_grids/laiv',				
 
@@ -17,7 +18,7 @@ start_date='2019-01-01',
       ecotype_file='./tmp_grids/ecotype.nc',				
 
       GtEcoEF_file='./db/GtEFbyEcotype.csv',
-!BDNP
+!BDSNP
          arid_file='./tmp_grids/arid.nc',     
         narid_file='./tmp_grids/nonarid.nc',  
            lt_file='./tmp_grids/landtype',  

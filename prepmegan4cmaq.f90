@@ -48,7 +48,7 @@ program prepmegan4cmaq
   call build_CT3(grid,proj,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file,nl_tree_frac_file,tp_tree_frac_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  !call build_LAIv(grid,proj,laiv_files)
+  call build_LAIv(grid,proj,laiv_files)
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
   call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
@@ -199,7 +199,6 @@ contains
         call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, nvars*16, adjustl(var_list_string)))
         call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
         call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
-
      call check(nf90_enddef(ncid))
      !End NetCDF define mode
  end subroutine createNetCDF
@@ -299,7 +298,7 @@ contains
         call check(nf90_put_var(ncid, var_id, CTS(:,:,1)*CTS(:,:,6)                    )) 
         !TFLAG:
         call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-        call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
+        call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
       call check(nf90_close(ncid))
       !Cierro NetCDF outFile
  
@@ -321,7 +320,7 @@ contains
     character(len=10) :: outfile
     integer ::var_id,ncid
     integer :: nvars
-    character(len=2)::kk
+    character(len=2):: kk
     
     print*,"Building MEGAN_LAI file ..."
     
@@ -336,18 +335,19 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        LAIv(:,:,k)=get2DvarFromNetCDF(trim(laivfile)//kk//".nc", "Band1", g%nx, g%ny)
+        print*,trim(laivfile)//kk//".nc"
+        LAIv(:,:,k)=get2DvarFromNetCDF( trim(laivfile)//kk//".nc", "Band1", g%nx, g%ny)
     enddo
     where (LAIv < 0.0 )
             LAIv=0.0
     endwhere
-
     var_list=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
     var_desc=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
     var_unit=spread("nondimension",1,nvars)
  
     !Creo NetCDF file
     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+    
     !Abro NetCDF outFile
     call check(nf90_open(outFile, nf90_write, ncid       ))
       do k=1, nvars       
@@ -466,6 +466,9 @@ contains
         call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
         call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k)))
       enddo
+      !TFLAG:
+      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+      call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,19) ))
      call check(nf90_close( ncid ))
      !Cierro NetCDF outFile================
 
@@ -480,10 +483,13 @@ contains
      call createNetCDF(outFileLDF,p,g,var_list,var_unit,var_desc)
      !Abro NetCDF outFile
      call check(nf90_open(outFileLDF, nf90_write, ncid       ))
-     do k=20,23       
-       call check(nf90_inq_varid(ncid,var_list(k-19) ,var_id))               
-       call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
-     enddo
+       do k=20,23       
+         call check(nf90_inq_varid(ncid,var_list(k-19) ,var_id))               
+         call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
+       enddo
+       !TFLAG:
+       call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+       call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,4) ))
      call check(nf90_close( ncid ))
      !Cierro NetCDF outFile================
 
@@ -590,6 +596,9 @@ contains
         call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
         call check(nf90_put_var(ncid, var_id, NITRO(:,:,k)))
       enddo
+      !TFLAG:
+      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+      call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
      call check(nf90_close( ncid ))
 
   end subroutine 
