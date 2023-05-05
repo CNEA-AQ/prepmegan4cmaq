@@ -10,8 +10,8 @@ start_date="2019-01-01"	#"%Y-%m-%d %H"
 
   srsInp="epsg:4326"	#(latlon spatial reference system of input files)
 
-GRIDDESC_file="./GRIDDESC_example"
-GRIDNAME="Argentina"
+GRIDDESC_file="/home/usuario/runs/papila2019/cmaq/mcip/GRIDDESC" #"./GRIDDESC_example"
+GRIDNAME="PAPILAGRID" #"Argentina"
    
 #Input Files:
        laiv_files='./input/laiv2003'			 #LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
@@ -39,34 +39,34 @@ nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'  
 #(0) Get grid & proj parameters from GRIDDESC:
 read projName xorig yorig dx dy nx ny nz <<< $( sed -n "/${GRIDNAME}/{n;p;q}" "$GRIDDESC_file" )
 read COORDTYPE P_ALP P_BET P_GAM XCENT YCENT <<< $( sed -n "/${projName}/{n;p;q}" "$GRIDDESC_file" )
-#read COORDTYPE truelat1 truelat2 stand_lon ref_lon ref_lat	#(en el namelist de wrf)
-#truelat1=-50;truelat2=-20;stand_lon=-65;ref_lon=-65;ref_lat=-35;
-  if [ $COORDTYPE == 1 ]; then           #Geographic:
+
+  if [ $COORDTYPE == 1 ]; then     #Geographic:
    srsOut="+proj=latlong +a=6370000.0 +b=6370000.0"
 elif [ $COORDTYPE == 2 ]; then     #Lambert Conformal Conic:
    srsOut="+proj=lcc +lat_1=$P_ALP +lat_2=$P_BET +lon_0=$P_GAM +lat_0=$YCENT +a=6370000.0 +b=6370000.0 +units=m"
 elif [ $COORDTYPE == 3 ]; then     #General Mercator
-   srsOut="+proj=merc +lat_ts=$P_ALP +a=6370000.0 +b=6370000.0"
+   echo  "proyección: 3 (General Mercator) no soportada en esta aplicación."; stop
 elif [ $COORDTYPE == 4 ]; then     #General tangent Stereografic
-   srsOut="+proj=stere +lat_0=$YCENT +lon_0=$P_GAM +lat_ts=lat_ts +a=6370000.0 +b=6370000.0 +k_0=1.0"
+   srsOut="+proj=stere +lat_ts=$P_ALP +lat_0=$P_BET +lon_0=$P_GAM +a=6370000.0 +b=6370000.0 +k_0=1.0 +units=m"	#(!) Casi seguro que está mal
 elif [ $COORDTYPE == 5 ]; then     #UTM
    echo  "proyección: 5 (Universal Transverse Mercator) no soportada en esta aplicación."; stop
 elif [ $COORDTYPE == 6 ]; then     #Polar Secant Stereographic
-   srsOut="+proj=stere +lat_0=$YCENT +lon_0=$P_GAM +lat_ts=lat_ts +a=6370000.0 +b=6370000.0 +k_0=1.0"
+   srsOut="+proj=stere +lat_0=$YCENT +lon_0=$P_GAM +lat_ts=lat_ts +a=6370000.0 +b=6370000.0 +k_0=1.0 +units=m"
 elif [ $COORDTYPE == 7 ]; then     #Equatorial Mercator
-   srsOut="+proj=merc +lat_ts=$P_ALP +a=6370000.0 +b=6370000.0"
+   srsOut="+proj=merc +lat_ts=$P_ALP +lon_0=$P_GAM +a=6370000.0 +b=6370000.0 +units=m" 
 elif [ $COORDTYPE == 8 ]; then     #Transverse Mercator
    echo  "proyección: 8 (Transverse Mercator) no soportada en esta aplicación."; stop
 elif [ $COORDTYPE == 9 ]; then     #Lambert Azimuthal Equal-Area
    echo  "proyección: 9 (Lambert Azimuthal Equal-Area) no soportada en esta aplicación."; stop
 else
-   echo  "codigo de proyección invalido. COORDTYPE"; stop
+   echo  "codigo de proyección invalido. COORDTYPE: $COORDTYPE"; stop
 fi;
 
 echo "SRS of Input  Grids: $srsInp"
 echo "SRS of Output Grids: $srsOut"
 #Grilla
-xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig} *-1 " );ymax=$( bc -l <<<"${yorig} *-1 " )
+#xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig}*-1 " );ymax=$( bc -l <<<"${yorig}*-1 " )
+xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig}+$nx*$dx " );ymax=$( bc -l <<<"${yorig}+$ny*$dy " )
 #------------------------------------------------
 #(1) Re-gridding: Agarrar los inputs y regrillarlos (e interpolar) segun GRIDDESC.
 #interpolation methods: near (default), bilinear, cubic, cubicspline, lanczos, average, rms, mode,  max, min, med, Q1, Q3, sum
