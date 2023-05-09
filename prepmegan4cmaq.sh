@@ -32,6 +32,7 @@ tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'	 #frac of tropical   trees (
 arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'	         #     arid mask (0/1)- netCDF file path
 nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'   # non arid mask (0/1)- netCDF file path
   landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'         # landtype           - netCDF files PREFIX
+
   nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      # soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
   #     fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             #Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
 
@@ -51,7 +52,7 @@ elif [ $COORDTYPE == 4 ]; then     #General tangent Stereografic
 elif [ $COORDTYPE == 5 ]; then     #UTM
    echo  "proyección: 5 (Universal Transverse Mercator) no soportada en esta aplicación."; stop
 elif [ $COORDTYPE == 6 ]; then     #Polar Secant Stereographic
-   srsOut="+proj=stere +lat_0=$YCENT +lon_0=$P_GAM +lat_ts=lat_ts +a=6370000.0 +b=6370000.0 +k_0=1.0 +units=m"
+   srsOut="+proj=stere +lat_0=$P_ALP +lat_ts=$P_BET +lon_0=$P_GAM +a=6370000.0 +b=6370000.0 +k_0=1.0 +units=m"
 elif [ $COORDTYPE == 7 ]; then     #Equatorial Mercator
    srsOut="+proj=merc +lat_ts=$P_ALP +lon_0=$P_GAM +a=6370000.0 +b=6370000.0 +units=m" 
 elif [ $COORDTYPE == 8 ]; then     #Transverse Mercator
@@ -64,9 +65,12 @@ fi;
 
 echo "SRS of Input  Grids: $srsInp"
 echo "SRS of Output Grids: $srsOut"
+#echo "$XCENT $YCENT" | gdaltransform -s_srs "$srsInp" -t_srs "$srsOut"  
+
 #Grilla
-#xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig}*-1 " );ymax=$( bc -l <<<"${yorig}*-1 " )
+xmin=$xorig;ymin=$yorig; 
 xmin=$xorig;ymin=$yorig; xmax=$( bc -l <<<"${xorig}+$nx*$dx " );ymax=$( bc -l <<<"${yorig}+$ny*$dy " )
+echo "xmin xmax ymin ymax: $xmin $xmax, $ymin, $ymax"
 #------------------------------------------------
 #(1) Re-gridding: Agarrar los inputs y regrillarlos (e interpolar) segun GRIDDESC.
 #interpolation methods: near (default), bilinear, cubic, cubicspline, lanczos, average, rms, mode,  max, min, med, Q1, Q3, sum
@@ -82,13 +86,14 @@ echo " $shrub_frac_file   -> shrub.nc  "; gdalwarp -q -overwrite -s_srs "$srsInp
 echo " $tree_frac_file    -> tree.nc   "; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF"    $tree_frac_file ./tmp_grids/tree.nc 
 echo " $nl_tree_frac_file -> nl_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $nl_tree_frac_file ./tmp_grids/nl_tree.nc 
 echo " $tp_tree_frac_file -> tp_tree.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" $tp_tree_frac_file ./tmp_grids/tp_tree.nc
-echo " $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode     -f "NetCDF"  $ecotype_file ./tmp_grids/ecotype.nc 
+echo " $ecotype_file      -> ecotype.nc"; gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut" -te $xmin $ymin $xmax $ymax -tr $dx $dy -r mode     -f "NetCDF"      $ecotype_file ./tmp_grids/ecotype.nc 
 
 echo " $laiv_files        -> laiv.nc   "
 for MM in $(seq --format='%02.0f' 1 1 12)
 do
 	gdalwarp -q -overwrite -s_srs "$srsInp" -t_srs "$srsOut"  -te $xmin $ymin $xmax $ymax -tr $dx $dy -r bilinear -f "NetCDF" ${laiv_files}${MM}* ./tmp_grids/laiv${MM}.nc 
 done
+
 
 echo "Regridding input files for BDSNP..."
 
