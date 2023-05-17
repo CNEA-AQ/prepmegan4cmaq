@@ -5,23 +5,12 @@
 program prepmegan4cmaq
 
   use netcdf
+  use utils_mod         !utils
+  use PROJ_mod          !subroutines for coordinate transformations
+  use INTERP_mod        !subroutines for interpolation/regridding
+  use nc_handler_mod    !functions to deal with netcdf
+
   implicit none
-
-  type proj_type
-     character(16)    :: pName     ! nombre de la proyeccion
-     character(7)     :: typ_str   ! String  code for projection TYPE
-     integer          :: typ       ! Integer code for projection TYPE
-     real             :: alp,bet,gam,xcent,ycent!ref_lat,ref_lon,truelat1,truelat2,stand_lon,pole_lat,pole_lon
-     character(125)   :: proj4     ! PROJ4 srs definition.
-  end type proj_type
-
-  type grid_type
-      character(12)    :: gName     !grid-name
-      integer          :: nx,ny,nz  !number of cells in x-y direction (ncols, nrows, nlevs)
-      real             :: dx,dy     !x-y cell dimension (x_cell, y_cell)
-      real             :: xmin,ymin,xmax,ymax,xc,yc
-      real             :: lonmin,latmin,lonmax,latmax
-   end type grid_type
 
   type(proj_type) :: proj
   type(grid_type) :: grid
@@ -42,8 +31,11 @@ program prepmegan4cmaq
   end if
 
   !Leo GRIDDESC:
-  call read_GRIDDESC(griddesc_file,gridname, proj, grid)    !(!) mejorar esta funcion basado en lo que haga IOAPI
+  call read_GRIDDESC(griddesc_file,gridname, proj, grid)
 
+  call set_additional_proj_params(proj)
+  call set_additional_grid_params(proj, grid)
+                                                                       
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
   call build_CT3(grid,proj,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file,nl_tree_frac_file,tp_tree_frac_file)
   
@@ -66,174 +58,30 @@ print*, "========================================="
 
 contains
 
- subroutine check(status)
-   integer, intent(in) :: status
-   if (status /= nf90_noerr) then
-     write(*,*) nf90_strerror(status)
-     stop 'netcdf error'
-   end if
- end subroutine check
-
-! !Interfaz a "date"
-! function date(date_str, fmt_str) result(output)
-!   implicit none
-!   character(*), intent(in) :: date_str, fmt_str
-!   character(256)           :: command
-!   character(20)            :: output
-!   command="date -d "//trim(date_str)//" '+"//trim(fmt_str)//"'  > tmp_date.txt"
-!   call system( trim(command) )
-!   !print*,trim(command)
-!   open(9, file='tmp_date.txt', status='old',action='read'); read(9, '(A)', iostat=status) output;  close(9)
-!   call system('rm tmp_date.txt')
-! end function
-
- function atoi(str)     !string -> int
-   implicit none
-   character(len=*), intent(in) :: str
-   integer :: atoi
-   read(str,*) atoi
- end function
- function itoa(i)       !int -> string
-    implicit none
-    integer, intent(in) :: i
-    character(len=20) :: itoa
-    write(itoa, '(i0)') i
-    itoa = adjustl(itoa)
- end function
- function rtoa(r)       !real -> string
-    implicit none
-    real, intent(in) :: r
-    character(len=16) :: rtoa
-    write(rtoa, '(F16.3)') r
-    rtoa = adjustl(rtoa)
- end function
-
  subroutine read_GRIDDESC(griddescFile,gridName, p, g)
   implicit none
   character(200),intent(in) :: griddescFile
   character(*) ,intent(in)  :: gridName
-  type(proj_type) ,intent(inout) :: p
-  type(grid_type) ,intent(inout) :: g
+  type(proj_type), intent(inout) :: p
+  type(grid_type), intent(inout) :: g
   character(20) :: row
   iostat=0
-  open(unit=1,file=griddescFile,status='old',action='read',access='sequential')
+  open(unit=2,file=griddescFile,status='old',action='read',access='sequential')
   do while(iostat == 0)  !loop por cada fila
-     read(1,*,iostat=iostat) row
+     read(2,*,iostat=iostat) row
      if ( trim(row) == trim(gridname)) then
        g%gName=row
-       read(1,*) p%pName,g%xmin,g%ymin,g%dx,g%dy,g%nx,g%ny !projName xorig yorig xcell ycell nrows ncols
-       rewind(1)
+       read(2,*) p%pName,g%xmin,g%ymin,g%dx,g%dy,g%nx,g%ny !projName xorig yorig xcell ycell nrows ncols
+       rewind(2)
      endif
      if (trim(row) == trim(p%pName)) then
-       read(1,*) p%typ,p%alp,p%bet,p%gam,p%xcent,p%ycent   !map_proj truelat1 truelat2 stand_lon ref_lon ref_lat
+       read(2,*) p%typ,p%alp,p%bet,p%gam,p%xcent,p%ycent   !map_proj truelat1 truelat2 stand_lon ref_lon ref_lat
        iostat=1
      endif
   enddo
-  close(1);
+  close(2)
  end subroutine
 
- subroutine createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
-    implicit none
-    type(grid_type) , intent(in) :: g
-    type(proj_type) , intent(in) :: p
-    character(len=10), intent(in) :: outFile
-    character(len=16), allocatable:: var_list(:),var_unit(:)
-    character(len=25), allocatable:: var_desc(:)
-    integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
-    integer :: nvars
-    character(800) :: var_list_string
- 
-    nvars=size(var_list)
-    write(var_list_string,*) var_list                !este es un global attr importante.
-    
-    call check(nf90_create(outFile, NF90_CLOBBER, ncid))
-        ! Defino dimensiones
-        call check(nf90_def_dim(ncid, "TSTEP"    , 1      , tstep_dim_id     ))
-        call check(nf90_def_dim(ncid, "DATE-TIME", 2      , date_time_dim_id ))
-        call check(nf90_def_dim(ncid, "COL"      , g%nx   , col_dim_id       ))
-        call check(nf90_def_dim(ncid, "ROW"      , g%ny   , row_dim_id       ))
-        call check(nf90_def_dim(ncid, "LAY"      , 1      , lay_dim_id       ))
-        call check(nf90_def_dim(ncid, "VAR"      , nvars  , var_dim_id       ))
-        !Defino variables
-        call check(nf90_def_var(ncid,"TFLAG",NF90_INT      , [date_time_dim_id,var_dim_id,tstep_dim_id], var_id))
-        call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
-        call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
-        call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
-        do k=1, nvars
-          call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
-          call check(nf90_put_att(ncid, var_id,"long_name",      var_list(k)  ))
-          call check(nf90_put_att(ncid, var_id,"units"    , trim(var_unit(k)) ))
-          call check(nf90_put_att(ncid, var_id,"var_desc" , trim(var_desc(k)) ))
-        end do
-        ! Defino attributos
-        call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: \$Id: init3" ))
-        call check(nf90_put_att(ncid, nf90_global,"EXEC_ID", "????????????????"   ))
-        call check(nf90_put_att(ncid, nf90_global,"FTYPE"  , 1                    ))
-        call check(nf90_put_att(ncid, nf90_global,"SDATE"  , 0000000              ))!stat_date (int)
-        call check(nf90_put_att(ncid, nf90_global,"STIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"WDATE"  , 2023001              ))
-        call check(nf90_put_att(ncid, nf90_global,"WTIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"CDATE"  , 2023001              ))
-        call check(nf90_put_att(ncid, nf90_global,"CTIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"TSTEP"  , 10000                ))
-        call check(nf90_put_att(ncid, nf90_global,"NTHIK"  , 1                    ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
-        call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
-        call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
-        call check(nf90_put_att(ncid, nf90_global,"NVARS"  , nvars                ))
-        call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_GAM"  , p%gam                ))
-        call check(nf90_put_att(ncid, nf90_global,"XCENT"  , p%xcent              ))
-        call check(nf90_put_att(ncid, nf90_global,"YCENT"  , p%ycent              ))
-        call check(nf90_put_att(ncid, nf90_global,"XORIG"  , g%xmin               ))
-        call check(nf90_put_att(ncid, nf90_global,"YORIG"  , g%ymin               ))
-        call check(nf90_put_att(ncid, nf90_global,"XCELL"  , g%dx                 ))
-        call check(nf90_put_att(ncid, nf90_global,"YCELL"  , g%dy                 ))
-        call check(nf90_put_att(ncid, nf90_global,"VGTYP"  , -9999                ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"VGTOP"  , 0.                   ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"VGLVLS" , [0., 0.]             ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"GDNAM"  , g%gName              ))
-        call check(nf90_put_att(ncid, nf90_global,"UPNAM"  , "prepMegan4cmaq.exe" ))!no sé que es.
-        call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, nvars*16, adjustl(var_list_string)))
-        call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
-        call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
-     call check(nf90_enddef(ncid))
-     !End NetCDF define mode
- end subroutine createNetCDF
- 
- function get2DvarFromNetCDF(ncfile, varname, nx, ny)  result(GRIDVAR)
-        implicit none
-        character(50), intent(in) :: ncfile
-        character(5) , intent(in) :: varname
-        integer, intent(in)       :: nx,ny
-        real, allocatable :: GRIDVAR(:,:)
-        integer var_id,ncid
- 
-        allocate(GRIDVAR(nx,ny))
-
-        call check(nf90_open(trim(ncfile), nf90_write, ncid ))
-             call check(   nf90_inq_varid(ncid,trim(varname), var_id   ))
-             call check(   nf90_get_var(ncid, var_id , GRIDVAR   ))
-        call check(nf90_close(ncid))
- end function get2DvarFromNetCDF
-
- function get2DvarFromNetCDFint(ncfile, varname, nx, ny)  result(GRIDVAR)
-        implicit none
-        character(50), intent(in) :: ncfile
-        character(5) , intent(in) :: varname
-        integer, intent(in)       :: nx,ny
-        integer, allocatable :: GRIDVAR(:,:)
-        integer var_id,ncid
- 
-        allocate(GRIDVAR(nx,ny))
-
-        call check(nf90_open(trim(ncfile), nf90_write, ncid ))
-             call check(   nf90_inq_varid(ncid,trim(varname), var_id   ))
-             call check(   nf90_get_var(ncid, var_id , GRIDVAR   ))
-        call check(nf90_close(ncid))
- end function get2DvarFromNetCDFint
  !----------------------------------
  !  MEGAN_CTS 
  !---------------------------------
