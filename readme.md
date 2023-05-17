@@ -41,8 +41,8 @@ start_date="2019-01-01" #"%Y-%m-%d %H"
 
   srsInp="epsg:4326"    #(latlon spatial reference system of input files)
 
-GRIDDESC_file="./GRIDDESC_example"
-GRIDNAME="Argentina"
+GRIDDESC_file="/home/usuario/runs/papila2019/cmaq/mcip/GRIDDESC" #"./GRIDDESC_example"
+GRIDNAME="PAPILAGRID" #"Argentina"
 
 #Input Files:
        laiv_files='./input/laiv2003'                     #LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
@@ -63,9 +63,9 @@ tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'      #frac of tropical   tre
 arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'          #     arid mask (0/1)- netCDF file path
 nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'   # non arid mask (0/1)- netCDF file path
   landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'         # landtype           - netCDF files PREFIX
+
   nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      # soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
   #     fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             #Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
-
 ```
 
 Note that the variables must be adjusted to match the appropriate values for your system.
@@ -80,6 +80,17 @@ Please feel free to contact the developer if you have any issues or suggestions.
 
 
 ## Planned future improvements:
- + [ ] BDNP Fert support
- + [ ] Roboust GRIDDESC reader
+
+ + [ ] BDNP (Fert variable) support.
+ + [ ] Reduce number input files and output files. 
+   - [ ] Group LAI files into one.
+   - [ ] Group GT frac files into one.
+   - [ ] Group Fert files and Nitro files.
+   - [ ] Group landtype files by using int as id. 
+ + [ ] Input and output files and variables with minningfull names.
+ + [ ] Remove GDAL/OGR dependence 
+   - [x] Roboust GRIDDESC reader.
+   - [x] coordinate transformations functions
+   - [ ] interpolation subroutines
+ + [ ] Add some scripts to download and prepare some input files (LAI, Fert, Nitro, etc.)
 
