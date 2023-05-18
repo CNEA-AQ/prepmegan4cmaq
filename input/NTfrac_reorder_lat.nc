@@ -1,1 +1,1 @@
-/home/rama/emis/landdata/megan_preprocessor/NTfrac_reorder_lat.nc
+/home/usuario/data/megan_cmaq_uci_bai_inp_data/NTfrac_reorder_lat.nc

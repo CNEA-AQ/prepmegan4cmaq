@@ -1,1 +1,1 @@
-/home/rama/emis/landdata/megan_preprocessor/GF3aGrass.nc
+/home/usuario/data/megan_cmaq_uci_bai_inp_data/GF3aGrass.nc

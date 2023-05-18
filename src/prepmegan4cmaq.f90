@@ -7,7 +7,7 @@ program prepmegan4cmaq
   use netcdf
   use utils_mod         !utils
   use PROJ_mod          !subroutines for coordinate transformations
-  use INTERP_mod        !subroutines for interpolation/regridding
+  !use INTERP_mod        !subroutines for interpolation/regridding
   use nc_handler_mod    !functions to deal with netcdf
 
   implicit none
@@ -19,7 +19,8 @@ program prepmegan4cmaq
   integer :: i,j,k
 
   character(len=17):: start_date,end_date
-  character(200)   :: griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
+  character(200)   :: griddesc_file,gridname
+  character(200)   :: crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
   namelist/control/start_date,end_date,griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
@@ -82,6 +83,34 @@ contains
   close(2)
  end subroutine
 
+ function interpolate(p,g,inp_file)   result (img)
+    implicit none
+    type(grid_type) ,intent(in) :: g
+    type(proj_type) ,intent(in) :: p
+    character(*),intent(in) :: inp_file
+    real,allocatable :: img(:,:)
+
+    character(300) :: command,proj4
+
+         if ( p%typ == 2 ) then  !Lambert Conformal Conic:
+       proj4="+proj=lcc +lat_1="//trim(rtoa(p%alp))//" +lat_2="//trim(rtoa(p%bet))//" +lon_0="//trim(rtoa(p%gam))//" +lat_0="//trim(rtoa(p%ycent))//" +a=6370000.0 +b=6370000.0 +units=m"
+    else if ( p%typ == 6 ) then  !Polar Secant Stereographic
+       proj4="+proj=stere +lat_ts="//trim(rtoa(p%alp))//" +lon_0="//trim(rtoa(p%gam))//" +a=6370000.0 +b=6370000.0"! +k_0=1.0"
+    else if ( p%typ == 7 ) then  !Equatorial Mercator
+       proj4="+proj=merc +lat_ts="//trim(rtoa(p%alp))//" +lon_0="//trim(rtoa(p%gam))//" +a=6370000.0 +b=6370000.0"
+    else
+       print*, "codigo de proyección invalido.", p%typ; stop
+    end if
+
+    command="gdalwarp -q -overwrite -s_srs 'epsg:4326' -t_srs '"//trim(proj4)//"' -te "//trim(rtoa(g%xmin))//" "//trim(rtoa(g%ymin))//" "//" "//trim(rtoa(g%xmax))//" "//trim(rtoa(g%ymax))//" -tr "//trim(rtoa(g%dx))//" "//trim(rtoa(g%dy))//" -r bilinear -f 'NetCDF' "//trim(inp_file)//" ./tmp.nc "
+    
+    print*,"COMMAND: ",command
+
+    call system(trim(command))
+
+    allocate(img(g%nx,g%ny))
+    img(:,:)=get2DvarFromNetCDF("./tmp.nc", "Band1", g%nx, g%ny)
+ end function
  !----------------------------------
  !  MEGAN_CTS 
  !---------------------------------
@@ -99,132 +128,49 @@ contains
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
  
     print*,"Building MEGAN_CTS file ..."
- 
+
     outfile='CT3.nc'
     nvars=6
  
     allocate(var_list(nvars))  
     allocate(var_unit(nvars))  
     allocate(var_desc(nvars))  
-    allocate(CTS(g%nx,g%ny,1,nvars)) !allocate(CTS(g%nx,g%ny,nvars))  
- 
-    CTS(:,:,1,1)=get2DvarFromNetCDF(    treefile, "Band1", g%nx, g%ny)
-    CTS(:,:,1,2)=get2DvarFromNetCDF(   shrubfile, "Band1", g%nx, g%ny)
-    CTS(:,:,1,3)=get2DvarFromNetCDF(    cropfile, "Band1", g%nx, g%ny)
-    CTS(:,:,1,4)=get2DvarFromNetCDF(   grassfile, "Band1", g%nx, g%ny)
-    CTS(:,:,1,5)=get2DvarFromNetCDF(  nltreefile, "Band1", g%nx, g%ny)
-    CTS(:,:,1,6)=get2DvarFromNetCDF(troptreefile, "Band1", g%nx, g%ny)
+    allocate(CTS(g%nx,g%ny,1,nvars+1))!    allocate(CTS(g%nx,g%ny,nvars))  
+  
+    CTS(:,:,1,1)=interpolate(p,g,inp_file="./input/GF3aTree.nc"            ) !"GF3aTree.nc")   !,varname)
+    CTS(:,:,1,2)=interpolate(p,g,inp_file="./input/GF3aShrub.nc"           ) !   shrubfile)   !,varname)
+    CTS(:,:,1,3)=interpolate(p,g,inp_file="./input/GF3aCrop.nc"            ) !    cropfile)   !,varname)
+    CTS(:,:,1,4)=interpolate(p,g,inp_file="./input/GF3aGrass.nc"           ) !   grassfile)   !,varname)
+    CTS(:,:,1,5)=interpolate(p,g,inp_file="./input/NTfrac_reorder_lat.nc"  ) !  nltreefile)   !,varname)
+    CTS(:,:,1,6)=interpolate(p,g,inp_file="./input/tropfrac_reorder_lat.nc") !troptreefile)   !,varname)
 
     !needleleaf tree
-    CTS(:,:,1,4)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * CTS(:,:,1,5)    
-    !boradleaf tree
-    CTS(:,:,1,5)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * (1.0-CTS(:,:,1,5))
+    CTS(:,:,1,5)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * CTS(:,:,1,5)    
     !tropical tree
-    CTS(:,:,1,6)=CTS(:,:,1,1)*CTS(:,:,1,6)  
-    where ( CTS< 0.0 )
+    CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6) 
+    !boradleaf tree
+    CTS(:,:,1,7)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * (1.0-CTS(:,:,1,5))
+    where ( CTS < 0.0 )
          CTS=0.0
     end where
-
-    call check(nf90_create(outFile, NF90_CLOBBER, ncid))
-        ! Defino dimensiones
-        call check(nf90_def_dim(ncid, "TSTEP"    , nvars  , tstep_dim_id     ))
-        call check(nf90_def_dim(ncid, "DATE-TIME", 2      , date_time_dim_id ))
-        call check(nf90_def_dim(ncid, "COL"      , g%nx   , col_dim_id       ))
-        call check(nf90_def_dim(ncid, "ROW"      , g%ny   , row_dim_id       ))
-        call check(nf90_def_dim(ncid, "LAY"      , 1      , lay_dim_id       ))
-        call check(nf90_def_dim(ncid, "VAR"      , 1      , var_dim_id       ))
-        !Defino variables
-        call check(nf90_def_var(ncid,"TFLAG",NF90_INT      , [date_time_dim_id,var_dim_id,tstep_dim_id], var_id))
-        call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
-        call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
-        call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
-        
-        call check(nf90_def_var(ncid, 'CTS' , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
-        call check(nf90_put_att(ncid, var_id,"long_name", "CTS" ))
-        call check(nf90_put_att(ncid, var_id,"units"    , "nondimension    " ))
-        call check(nf90_put_att(ncid, var_id,"var_desc" , "" ))
-
-        ! Defino attributos
-        call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: \$Id: init3" ))
-        call check(nf90_put_att(ncid, nf90_global,"EXEC_ID", "????????????????"   ))
-        call check(nf90_put_att(ncid, nf90_global,"FTYPE"  , 1                    ))
-        call check(nf90_put_att(ncid, nf90_global,"SDATE"  , 0000000              ))!stat_date (int)
-        call check(nf90_put_att(ncid, nf90_global,"STIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"WDATE"  , 2023001              ))
-        call check(nf90_put_att(ncid, nf90_global,"WTIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"CDATE"  , 2023001              ))
-        call check(nf90_put_att(ncid, nf90_global,"CTIME"  , 000000               ))
-        call check(nf90_put_att(ncid, nf90_global,"TSTEP"  , 10000                ))
-        call check(nf90_put_att(ncid, nf90_global,"NTHIK"  , 1                    ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
-        call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
-        call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
-        call check(nf90_put_att(ncid, nf90_global,"NVARS"  , nvars                ))
-        call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
-        call check(nf90_put_att(ncid, nf90_global,"P_GAM"  , p%gam                ))
-        call check(nf90_put_att(ncid, nf90_global,"XCENT"  , p%xcent              ))
-        call check(nf90_put_att(ncid, nf90_global,"YCENT"  , p%ycent              ))
-        call check(nf90_put_att(ncid, nf90_global,"XORIG"  , g%xmin               ))
-        call check(nf90_put_att(ncid, nf90_global,"YORIG"  , g%ymin               ))
-        call check(nf90_put_att(ncid, nf90_global,"XCELL"  , g%dx                 ))
-        call check(nf90_put_att(ncid, nf90_global,"YCELL"  , g%dy                 ))
-        call check(nf90_put_att(ncid, nf90_global,"VGTYP"  , -9999                ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"VGTOP"  , 0.                   ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"VGLVLS" , [0., 0.]             ))!no sé que es.
-        call check(nf90_put_att(ncid, nf90_global,"GDNAM"  , g%gName              ))
-        call check(nf90_put_att(ncid, nf90_global,"UPNAM"  , "prepMegan4cmaq.exe" ))!no sé que es.
-        call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, 16, "CTS"))
-        call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
-        call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
-     call check(nf90_enddef(ncid))
-    !End NetCDF define mode
-
+    
+    var_list=(/ 'SHRUB      ','CROP       ','HERB       ','NEEDL      ','TROPI      ','BROAD      '/)
+    var_desc=(/ "shrub fraction         ","crop fraction          ","grass fraction         ", "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction" /) 
+    var_unit=spread("nondimension",1,nvars)
+ 
+    ! Create the NetCDF file
+    call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+    !Abro NetCDF outFile
     call check(nf90_open(outFile, nf90_write, ncid       ))
-      !CTS
-      call check(nf90_inq_varid(ncid,"CTS" ,var_id))
-      call check(nf90_put_var(ncid, var_id, CTS  ))    
-      !!TFLAG:
-      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-      call check(nf90_put_var(ncid, var_id, spread(spread((/0000000,000000/),2,nvars),2,1) ))
-      call check(nf90_put_var(ncid, var_id, reshape([0, 0, 0, 10000, 0, 20000, 0, 30000, 0, 40000, 0, 50000], [2,1,6])))
-      
+    do i=2,nvars+1
+       call check(nf90_inq_varid(ncid,TRIM(var_list(i-1)),var_id))
+       call check(nf90_put_var(ncid, var_id, CTS(:,:,1,i)  ))        
+    end do
+    !TFLAG:
+    call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+    call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
     call check(nf90_close(ncid))
-
-    !ESTO SERÍA MÁS ADECUADO:
-    !var_list=(/ 'NEEDL      ','TROPI      ','BROAD      ','SHRUB      ','HERB       ','CROP       '/)
-    !var_desc=(/ "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","crop fraction          ","grass fraction         " /) 
-    !var_unit=spread("nondimension",1,nvars)
- 
-    !! Create the NetCDF file
-    !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
- 
-    !!Abro NetCDF outFile
-    ! call check(nf90_open(outFile, nf90_write, ncid       ))
-    !   !shrub
-    !   call check(nf90_inq_varid(ncid,"SHRUB" ,var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,2)  ))        
-    !   !crop
-    !   call check(nf90_inq_varid(ncid,"CROP"  ,var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,3)  ))        
-    !   !grass
-    !   call check(nf90_inq_varid(ncid,"HERB"  ,var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,4)  ))        
-    !   !needleleaf tree
-    !   call check(nf90_inq_varid(ncid,"NEEDL" ,var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1.0-CTS(:,:,6)) * CTS(:,:,5)     )) 
-    !   !boradleaf tree
-    !   call check(nf90_inq_varid(ncid,"BROAD" ,var_id))               
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1) * (1.0-CTS(:,:,6)) * (1.0-CTS(:,:,5)) ))
-    !   !tropical tree
-    !   call check(nf90_inq_varid(ncid,"TROPI" ,var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1)*CTS(:,:,6)                    )) 
-    !   !TFLAG:
-    !   call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-    !   call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
-    ! call check(nf90_close(ncid))
-    ! !Cierro NetCDF outFile
+    !Cierro NetCDF outFile
  
     deallocate(CTS)            !Libero memoria
  

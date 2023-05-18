@@ -1,1 +1,1 @@
-/home/rama/emis/landdata/megan_preprocessor/EVT3b.nc
+/home/usuario/data/megan_cmaq_uci_bai_inp_data/EVT3b.nc
