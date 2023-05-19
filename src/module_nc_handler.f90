@@ -17,8 +17,8 @@ contains
     type(grid_type) , intent(in) :: g
     type(proj_type) , intent(in) :: p
     character(len=10), intent(in) :: outFile
-    character(len=16), allocatable:: var_list(:),var_unit(:)
-    character(len=25), allocatable:: var_desc(:)
+    character(len=16) :: var_list(:),var_unit(:)
+    character(len=25) :: var_desc(:)
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
     integer :: k
     integer :: nvars
@@ -86,7 +86,7 @@ contains
  
  function get2DvarFromNetCDF(ncfile, varname, nx, ny)  result(GRIDVAR)
     implicit none
-    character(50), intent(in) :: ncfile
+    character(*), intent(in) :: ncfile
     character(5) , intent(in) :: varname
     integer, intent(in)       :: nx,ny
     real, allocatable :: GRIDVAR(:,:)
@@ -102,7 +102,7 @@ contains
 
  function get2DvarFromNetCDFint(ncfile, varname, nx, ny)  result(GRIDVAR)
     implicit none
-    character(50), intent(in) :: ncfile
+    character(*), intent(in) :: ncfile
     character(5) , intent(in) :: varname
     integer, intent(in)       :: nx,ny
     integer, allocatable :: GRIDVAR(:,:)

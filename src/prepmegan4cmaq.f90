@@ -9,6 +9,7 @@ program prepmegan4cmaq
   use PROJ_mod          !subroutines for coordinate transformations
   use nc_handler_mod    !functions to deal with netcdf
   !use INTERP_mod        !subroutines for interpolation/regridding
+  use readGRIDDESC_mod
 
   implicit none
 
@@ -59,30 +60,7 @@ print*, "========================================="
 
 contains
 
- subroutine read_GRIDDESC(griddescFile,gridName, p, g)
-  implicit none
-  character(200),intent(in) :: griddescFile
-  character(*) ,intent(in)  :: gridName
-  type(proj_type), intent(inout) :: p
-  type(grid_type), intent(inout) :: g
-  character(20) :: row
-  iostat=0
-  open(unit=2,file=griddescFile,status='old',action='read',access='sequential')
-  do while(iostat == 0)  !loop por cada fila
-     read(2,*,iostat=iostat) row
-     if ( trim(row) == trim(gridname)) then
-       g%gName=row
-       read(2,*) p%pName,g%xmin,g%ymin,g%dx,g%dy,g%nx,g%ny !projName xorig yorig xcell ycell nrows ncols
-       rewind(2)
-     endif
-     if (trim(row) == trim(p%pName)) then
-       read(2,*) p%typ,p%alp,p%bet,p%gam,p%xcent,p%ycent   !map_proj truelat1 truelat2 stand_lon ref_lon ref_lat
-       iostat=1
-     endif
-  enddo
-  close(2)
- end subroutine
-
+ !Funcion medio Fake de intepolación que será reemplazada en un futuro..
  function interpolate(p,g,inp_file)   result (img)
     implicit none
     type(grid_type) ,intent(in) :: g
@@ -111,8 +89,8 @@ contains
 
     allocate(img(g%nx,g%ny))
     img(:,:)=get2DvarFromNetCDF("./tmp.nc", "Band1", g%nx, g%ny)
-
  end function
+
  !----------------------------------
  !  MEGAN_CTS 
  !---------------------------------
@@ -370,7 +348,7 @@ contains
      LANDGRID(:,:,3) =0.0 
      do lt=1,24
              write(landtypeId, '(I0.2)') lt
-             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*interpolate(p,g, trim(lt_file)//landtypeId//".nc") !DO AN INTEGER VERSION OF THIS
+             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc")) !DO AN INTEGER VERSION OF THIS
      enddo
 
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
@@ -415,12 +393,7 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        !call check(nf90_open(trim(nitro_files)//kk//".nc", nf90_write, ncid ))
-        !     call check(   nf90_inq_varid(ncid,'Band1', var_id ))
-        !     call check(   nf90_get_var(ncid, var_id , NITRO(:,:,k)  ))
-        !call check(nf90_close(ncid ))
         NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc")
-    
     enddo
     where (NITRO < 0.0 )
             NITRO=0.0

@@ -2,8 +2,8 @@
 start_date="2019-01-01" !"%Y-%m-%d %H"
   end_date="2019-01-01" !"%Y-%m-%d %H"
 
-    griddesc_file='./GRIDDESC_example'
-         gridname='Argentina'
+    griddesc_file='./GRIDDESC'
+         gridname='MERC_TEST'
   
         laiv_files='./input/laiv2003'             !LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
 

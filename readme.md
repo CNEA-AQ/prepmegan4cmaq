@@ -18,7 +18,6 @@ Data required:
 + Ecotype
 + Soil data (for BDSNP soil NO algorithm): Land type, Climate data (arid/non-arid), Nitrogen deposition and soil Nitrogen from fertilizers.
 
-
 ## Build
 Go to the ``src`` directory:
 
@@ -38,7 +37,7 @@ The command `gdalwarp` (from GDAL/OGR) is used to regrid, interpolate and reproj
 
 Edit the namelist `example.inp` that contains the following variables:
 
-```shell
+```fortran
 &control
 start_date="2019-01-01" !"%Y-%m-%d %H"
 end_date="2019-01-01" !"%Y-%m-%d %H"
@@ -71,7 +70,7 @@ nitro_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      ! soil
 
 Note that the variables must be adjusted to match the appropriate values for your system.
 
-Then execute `prepmegan4cmaq.sh`:
+Then execute `prepmegan4cmaq.exe`:
 
 `> ./prepmegan4cmaq.exe < example.inp` 
 

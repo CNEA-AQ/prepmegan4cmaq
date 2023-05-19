@@ -1,82 +1,128 @@
-module INTERP_mod
- implicit none
+program test
 
  use netcdf 
 
- use proj_module
- use netcdf
+ use proj_mod
  use utils_mod         !utils
  use PROJ_mod          !subroutines for coordinate transformations
  use nc_handler_mod    !functions to deal with netcdf
- !use INTERP_mod        !subroutines for interpolation/regridding
+ use readGRIDDESC_mod
 
+ implicit none
 
- type(grid_type) ,intent(in) :: g
- type(proj_type) ,intent(in) :: p
- character(*),intent(in) :: inpfile,varname
+ type(grid_type)  :: grid
+ type(proj_type)  :: proj
+ character(200)   :: inpfile,varname
  real,allocatable :: img(:,:)
+ real,allocatable :: lat(:),lon(:)
+ integer :: ny1, nx1
 
- integer :: ncid, latid,lonid
- integer :: nr1, nc1, nr2, nc2
+ integer :: ncid, latid,lonid,var_id
 
- character(*) :: inpfile
- character(16) ::varname
+ real           :: minlat,minlon,maxlat,maxlon,dlat,dlon
+ character(200) :: gridname,griddesc_file
 
+ integer :: is,ie,js,je
+ real,allocatable :: img_crop(:,:)
+ real,allocatable :: lat_crop(:),lon_crop(:)
+ 
+ !------------------------------------------------------
+ !Leo GRIDDESC:
+ griddesc_file="GRIDDESC"
+ gridname="MERC_TEST"
+ call read_GRIDDESC(griddesc_file,gridname, proj, grid)
+
+ call set_additional_proj_params(proj)
+ call set_additional_grid_params(proj, grid)
+
+ !------------------------------------------------------
+ !Levanto archivo a interpolar:
  inpfile='./input/GF3aCrop.nc'
  varname='m20crop'
-
  call check(nf90_open(trim(inpfile), nf90_write, ncid ))
-      
-   call check(   nc_inq_dimid(ncid, "lat",latid )  )
-   call check(   nc_inq_dimlen(ncid, latid, nr1 )  )
-   call check(   nc_inq_dimid(ncid, "lon",lonid )  )
-   call check(   nc_inq_dimlen(ncid, lonid, nc1 )  )
-
-   allocate(img(nc1,nr1))
-   allocate(lat(nc1,nr1))
-   allocate(lon(nc1,nr1))
+   call check( nf90_inq_dimid(ncid, "lat",latid )             )
+   call check( nf90_inquire_dimension(ncid, latid, len=ny1 )  )
+   call check( nf90_inq_dimid(ncid, "lon",lonid )             )
+   call check( nf90_inquire_dimension(ncid, lonid, len=nx1 )  )
+   print*,"Global grid: ncols, nrows: ",nx1,ny1
+   allocate(img(nx1,ny1))
+   allocate(lat(ny1))
+   allocate(lon(nx1))
    !lat----------------------------------------------------------
-   call check(   nf90_inq_varid(ncid,trim("lat"), var_id   ))
-   call check(   nf90_get_var(ncid, var_id , lat   ))
+   call check( nf90_inq_varid(ncid,trim("lat"), var_id)   )
+   call check( nf90_get_var(ncid, var_id , lat   )        )
    !lon----------------------------------------------------------
-   call check(   nf90_inq_varid(ncid,trim("lon"), var_id   ))
-   call check(   nf90_get_var(ncid, var_id , lon   ))
+   call check( nf90_inq_varid(ncid,trim("lon"), var_id   ))
+   call check( nf90_get_var(ncid, var_id , lon   )        )
    !var----------------------------------------------------------
-   call check(   nf90_inq_varid(ncid,trim(varname), var_id   ))
-   call check(   nf90_get_var(ncid, var_id , img   ))
+   call check( nf90_inq_varid(ncid,trim(varname), var_id ))
+   call check( nf90_get_var(ncid, var_id , img   )        )
    !-------------------------------------------------------------
-
  call check(nf90_close(ncid))
+ !------------------------------------------------------
 
- !(1) Crop file array with boundary box:
- minlat=lat(0,0)        !lower-left corner?
- minlon=lon(0,0)        !lower-left corner?
- maxlat=lat(nr1,nc1)    !upper-right corner?
- maxlon=lon(nr1,nc1)    !upper-right corner?
- dlat=ABS(minlat-lat(1,0))  !ABS(maxlat-minlat)/nr1
- dlon=ABS(minlon-lon(0,1))  !ABS(maxlon-minlon)/nc1
+ !Levanto parametros de grilla a interpolar:
+ minlat=lat(ny1)  ; minlon=lon(  1)   !lower-left corner?
+ maxlat=lat(  1)  ; maxlon=lon(nx1)   !upper-right corner?
+ dlat=ABS(maxlat-lat(2))            !delta lat
+ dlon=ABS(minlon-lon(2))            !delta lon
+
+ !Checkear que sea una grilla regular
+ if( ABS(dlat - ABS(maxlat-minlat)/ny1) < 0.001  ) then; print*,"Lat OK";else; print*,"Lat NO es regular.";stop;endif
+ if( ABS(dlon - ABS(maxlon-minlon)/nx1) < 0.001  ) then; print*,"Lon OK";else; print*,"Lon NO es regular.";stop;endif
+ print*,"lat: min max dl",minlat,maxlat,dlat; print*,"lon: min max dl",minlon,maxlon,dlon
+
+ !!(1) Crop file array with boundary box:
+
+ is=MAX(1   ,FLOOR(  ( (grid%lonmin-minlon) )/dlon) )   
+ ie=MIN(nx1 ,CEILING(( (grid%lonmax-minlon) )/dlon) )
+ je=ny1-MAX(  1 ,FLOOR(  ( (grid%latmin-minlat) )/dlat) ) 
+ js=ny1-MIN(ny1 ,CEILING(( (grid%latmax-minlat) )/dlat) )
+
+ print*,"indices for lon",is,ie; print*,"indices for lat",js,je
+
+ grid%nx=ie-is+1
+ grid%ny=je-js+1
+
+ allocate(lon_crop(ie-is))
+ allocate(lat_crop(je-js))
+ allocate(img_crop(ie-is, je-js))
+
+ lon_crop=lon(is:ie)
+ lat_crop=lat(js:je)
+ img_crop=img(is:ie,js:je)
+
+ print*,"Size of img",shape(img_crop)
+ print*,"Shape of grid",grid%nx,grid%ny
+ deallocate(img)
+ deallocate(lat)
+ deallocate(lon)
+
+ ! Create the NetCDF file
+ call createNetCDF("tmp.nc",proj,grid,(/'img             '/),(/'units           '/),(/'vardesc                              '/))
+
+ !Abro NetCDF outFile
+ call check(nf90_open("tmp.nc", nf90_write, ncid       ))
+  call check(nf90_inq_varid(ncid,'img             ',var_id))
+  call check(nf90_put_var(ncid, var_id, img_crop ))
+ call check(nf90_close( ncid ))
+ !Cierro NetCDF outFile
 
 
-
- g%minlat 
- g%minlon
- g%maxlat 
- g%maxlon
 
  !(2) Create xx1 and yy1 arrays:
- !allocate(xx1(nc1))
- !allocate(yy1(nr1))
+ !allocate(x1(nx1))
+ !allocate(y1(ny1))
  !
- !do i=1,nc1
- !   do j=1, nr1
+ !do i=1,nx1
+ !   do j=1, ny1
  !       call ll2xy(p,lon,lat,x,y,)
  !   enddo
  !enddo
 
  !(3) Interpolate:
 
-
-
+end program
 
 
 !contains
@@ -146,8 +192,10 @@ module INTERP_mod
 !!
 !!subroutine interpolate(Im1,X1,Y1,Im2,X2,Y2)
 !!        implicit none
-!!        real, intent(in),    allocatable :: Im1(:), X1(:) ,Y1(:)   !original image
-!!        real, intent(inout), allocatable :: Im2(:), X2(:) ,Y2(:)   !interpolated image
+!!        real, intent(in),    allocatable :: Im1(:,:)       !original image
+!!        real, intent(in),    allocatable :: X1(:) ,Y1(:)  
+!!        real, intent(inout), allocatable :: Im2(:,:)       !interpolated image
+!!        real, intent(inout), allocatable :: X2(:) ,Y2(:)
 !!        
 !!        x1 =   FLOOR(x)
 !!        x2 = CEILING(x)
