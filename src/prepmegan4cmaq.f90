@@ -7,8 +7,8 @@ program prepmegan4cmaq
   use netcdf
   use utils_mod         !utils
   use PROJ_mod          !subroutines for coordinate transformations
-  !use INTERP_mod        !subroutines for interpolation/regridding
   use nc_handler_mod    !functions to deal with netcdf
+  !use INTERP_mod        !subroutines for interpolation/regridding
 
   implicit none
 
@@ -18,9 +18,9 @@ program prepmegan4cmaq
   integer :: status,iostat
   integer :: i,j,k
 
-  character(len=17):: start_date,end_date
-  character(200)   :: griddesc_file,gridname
-  character(200)   :: crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
+  character(len=17) :: start_date,end_date
+  character(200)    :: griddesc_file,gridname
+  character(200)    :: crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
   namelist/control/start_date,end_date,griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
 
@@ -41,7 +41,7 @@ program prepmegan4cmaq
   call build_CT3(grid,proj,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file,nl_tree_frac_file,tp_tree_frac_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  call build_LAIv(grid,proj,laiv_files)
+  !call build_LAIv(grid,proj,laiv_files)
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
   call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
@@ -90,7 +90,8 @@ contains
     character(*),intent(in) :: inp_file
     real,allocatable :: img(:,:)
 
-    character(300) :: command,proj4
+    character(500) :: command
+    character(200) :: proj4
 
          if ( p%typ == 2 ) then  !Lambert Conformal Conic:
        proj4="+proj=lcc +lat_1="//trim(rtoa(p%alp))//" +lat_2="//trim(rtoa(p%bet))//" +lon_0="//trim(rtoa(p%gam))//" +lat_0="//trim(rtoa(p%ycent))//" +a=6370000.0 +b=6370000.0 +units=m"
@@ -101,15 +102,16 @@ contains
     else
        print*, "codigo de proyección invalido.", p%typ; stop
     end if
-
+    
     command="gdalwarp -q -overwrite -s_srs 'epsg:4326' -t_srs '"//trim(proj4)//"' -te "//trim(rtoa(g%xmin))//" "//trim(rtoa(g%ymin))//" "//" "//trim(rtoa(g%xmax))//" "//trim(rtoa(g%ymax))//" -tr "//trim(rtoa(g%dx))//" "//trim(rtoa(g%dy))//" -r bilinear -f 'NetCDF' "//trim(inp_file)//" ./tmp.nc "
     
-    print*,"COMMAND: ",command
-
+    print*,"  Interpolando: "//trim(inp_file)//"..."
+    !print*,"$> ",command
     call system(trim(command))
 
     allocate(img(g%nx,g%ny))
     img(:,:)=get2DvarFromNetCDF("./tmp.nc", "Band1", g%nx, g%ny)
+
  end function
  !----------------------------------
  !  MEGAN_CTS 
@@ -135,7 +137,7 @@ contains
     allocate(var_list(nvars))  
     allocate(var_unit(nvars))  
     allocate(var_desc(nvars))  
-    allocate(CTS(g%nx,g%ny,1,nvars+1))!    allocate(CTS(g%nx,g%ny,nvars))  
+    allocate(CTS(g%nx,g%ny,1,nvars+1))  ! allocate(CTS(g%nx,g%ny,nvars))  
   
     CTS(:,:,1,1)=interpolate(p,g,inp_file="./input/GF3aTree.nc"            ) !"GF3aTree.nc")   !,varname)
     CTS(:,:,1,2)=interpolate(p,g,inp_file="./input/GF3aShrub.nc"           ) !   shrubfile)   !,varname)
@@ -153,19 +155,20 @@ contains
     where ( CTS < 0.0 )
          CTS=0.0
     end where
-    
     var_list=(/ 'SHRUB      ','CROP       ','HERB       ','NEEDL      ','TROPI      ','BROAD      '/)
     var_desc=(/ "shrub fraction         ","crop fraction          ","grass fraction         ", "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction" /) 
     var_unit=spread("nondimension",1,nvars)
  
     ! Create the NetCDF file
     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+
     !Abro NetCDF outFile
     call check(nf90_open(outFile, nf90_write, ncid       ))
     do i=2,nvars+1
        call check(nf90_inq_varid(ncid,TRIM(var_list(i-1)),var_id))
        call check(nf90_put_var(ncid, var_id, CTS(:,:,1,i)  ))        
     end do
+
     !TFLAG:
     call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
     call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
@@ -206,7 +209,7 @@ contains
     do k=1,nvars
         write(kk,'(I0.2)') k
         print*,trim(laivfile)//kk//".nc"
-        LAIv(:,:,k)=get2DvarFromNetCDF( trim(laivfile)//kk//".nc", "Band1", g%nx, g%ny)
+        LAIv(:,:,k)=interpolate(p,g,inp_file="laiv2003"//kk//"_30sec.nc") !"GF3aTree.nc")   !,varname)
     enddo
     where (LAIv < 0.0 )
             LAIv=0.0
@@ -225,11 +228,11 @@ contains
         call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
         call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
       enddo
-        !TFLAG:
-        call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-        call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
-     !Cierro NetCDF outFile
-     call check(nf90_close( ncid ))
+      !TFLAG:
+      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+      call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
+    !Cierro NetCDF outFile
+    call check(nf90_close( ncid ))
  
  end subroutine
  
@@ -266,18 +269,14 @@ contains
       allocate( ECOTYPE(g%nx, g%ny   ))   !ecotype         
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
 
-      !Levanto netcdf input files
-      call check(nf90_open(trim(ecotypefile), nf90_write, ncid ))
-           call check(   nf90_inq_varid(ncid,'Band1', var_id   ))
-           call check(   nf90_get_var(ncid, var_id , ECOTYPE   ))
-      call check(nf90_close(ncid ))
+      ECOTYPE(:,:)=interpolate(p,g, trim(ecotypefile))
 
       GTYP_LIST=(/'crop ','tree ','herb ','shrub'/)
-
-      GTYP(:,:,1)=get2DvarFromNetCDF( cropfile, "Band1", g%nx, g%ny)
-      GTYP(:,:,2)=get2DvarFromNetCDF( treefile, "Band1", g%nx, g%ny)
-      GTYP(:,:,3)=get2DvarFromNetCDF(grassfile, "Band1", g%nx, g%ny)
-      GTYP(:,:,4)=get2DvarFromNetCDF(shrubfile, "Band1", g%nx, g%ny)
+      GTYP(:,:,1)=interpolate(p,g, cropfile)
+      GTYP(:,:,2)=interpolate(p,g, treefile)
+      GTYP(:,:,3)=interpolate(p,g,grassfile)
+      GTYP(:,:,4)=interpolate(p,g,shrubfile)
+      
       where (GTYP < 0.0 )
               GTYP=0.0
       endwhere
@@ -288,7 +287,6 @@ contains
      !crop         1           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
      !crop         2           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
      !crop         3           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
-     !crop         4           EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
      !....         ...         EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
      !tree         1700        EFi01, EFi02, ... ,  EFi19, LDFi01, ... , LDiF04
  
@@ -317,22 +315,17 @@ contains
      deallocate(GTYP)
      deallocate(ECOTYPE)
       
-     !allocate(var_list(23),var_desc(23),var_unit(23))
-     !var_list=(/"EF_ISOP   ","EF_MBO    ","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO     ","EF_SQT_HR ","EF_SQT_LR ", "EF_MEOH   ","EF_ACTO   ","EF_ETOH   ","EF_ACID   ","EF_LVOC   ","EF_OXPROD ","EF_STRESS ","EF_OTHER  ","EF_CO     ", "LDF03     ", "LDF04     ", "LDF05     ", "LDF06     " /)
-     !var_desc=var_list
-     !var_unit=spread("nanomol/m^2/s",1,nvars)
-   
-     !EF.nc ==============================
-      outfileEF='EFMAP.nc'
-     allocate(var_list(19),var_desc(19),var_unit(19))
-     var_list=(/"EF_ISOP   ","EF_MBO    ","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO     ","EF_SQT_HR ","EF_SQT_LR ", "EF_MEOH   ","EF_ACTO   ","EF_ETOH   ","EF_ACID   ","EF_LVOC   ","EF_OXPROD ","EF_STRESS ","EF_OTHER  ","EF_CO     " /)
+     allocate(var_list(23),var_desc(23),var_unit(23))
+     var_list=(/"EF_ISOP   ","EF_MBO    ","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO     ","EF_SQT_HR ","EF_SQT_LR ", "EF_MEOH   ","EF_ACTO   ","EF_ETOH   ","EF_ACID   ","EF_LVOC   ","EF_OXPROD ","EF_STRESS ","EF_OTHER  ","EF_CO     ", "LDF03     ", "LDF04     ", "LDF05     ", "LDF06     " /)
      var_desc=var_list
-     var_unit=spread("nanomol/m^2/s",1,19)
+     var_unit=spread("nanomol/m^2/s",1,nvars)
+   
+     outFileEF='EF.nc'
      ! Create the NetCDF file
      call createNetCDF(outFileEF,p,g,var_list,var_unit,var_desc)
      !Abro NetCDF outFile
      call check(nf90_open(outFileEF, nf90_write, ncid       ))
-      do k=1, 19       
+      do k=1, 23       
         call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
         call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k)))
       enddo
@@ -342,35 +335,14 @@ contains
      call check(nf90_close( ncid ))
      !Cierro NetCDF outFile================
 
-     !!LDF.nc ==============================
-     outfileLDF='LDF.nc'
-     deallocate(var_list,var_desc,var_unit)
-     allocate(var_list(19),var_desc(19),var_unit(19))
-     var_list=(/"LDF03     ", "LDF04     ", "LDF05     ", "LDF06     " /)
-     var_desc=var_list
-     var_unit=spread("nanomol/m^2/s",1,4)
-     ! Create the NetCDF file
-     call createNetCDF(outFileLDF,p,g,var_list,var_unit,var_desc)
-     !Abro NetCDF outFile
-     call check(nf90_open(outFileLDF, nf90_write, ncid       ))
-       do k=20,23       
-         call check(nf90_inq_varid(ncid,var_list(k-19) ,var_id))               
-         call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k) ))
-       enddo
-       !TFLAG:
-       call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-       call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,4) ))
-     call check(nf90_close( ncid ))
-     !Cierro NetCDF outFile================
-
      deallocate(OUTGRID)
-   end subroutine
+ end subroutine
 
 
  !----------------------------------
  !  BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE
  !---------------------------------
-  subroutine BDSNP_LAND(g,p,arid_file, narid_file,lt_file)
+ subroutine BDSNP_LAND(g,p,arid_file, narid_file,lt_file)
      implicit none
      type(grid_type) ,intent(in) :: g
      type(proj_type) ,intent(in) :: p
@@ -392,13 +364,13 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
-     LANDGRID(:,:,1) = get2DvarFromNetCDFint( arid_file, 'Band1', g%nx, g%ny)
-     LANDGRID(:,:,2) = get2DvarFromNetCDFint(narid_file, 'Band1', g%nx, g%ny)
+     LANDGRID(:,:,1) = interpolate(p,g,  arid_file)
+     LANDGRID(:,:,2) = interpolate(p,g, narid_file)
      
      LANDGRID(:,:,3) =0.0 
      do lt=1,24
              write(landtypeId, '(I0.2)') lt
-             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt* get2DvarFromNetCDFint(trim(lt_file)//landtypeId//".nc", 'Band1', g%nx, g%ny)
+             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*interpolate(p,g, trim(lt_file)//landtypeId//".nc") !DO AN INTEGER VERSION OF THIS
      enddo
 
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
@@ -415,61 +387,63 @@ contains
         call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
      enddo
      call check(nf90_close( ncid ))
-  end subroutine BDSNP_LAND
+ end subroutine BDSNP_LAND
 
-  subroutine BDSNP_NFILE(g,p,nitro_files)   
-     implicit none
-     type(grid_type) ,intent(in) :: g
-     type(proj_type) ,intent(in) :: p
-     character(len=200),intent(in) :: nitro_files
-     real, allocatable :: NITRO(:,:,:)
-     character(len=10) :: outfile
-     character(len=16),allocatable :: var_list(:),var_unit(:)
-     character(len=25),allocatable :: var_desc(:)
-     integer :: var_id,ncid
-     integer :: nvars
-     integer :: k
-     character(len=2) ::kk
+ subroutine BDSNP_NFILE(g,p,nitro_files)   
+    implicit none
+    type(grid_type) ,intent(in) :: g
+    type(proj_type) ,intent(in) :: p
+    character(len=200),intent(in) :: nitro_files
+    real, allocatable :: NITRO(:,:,:)
+    character(len=10) :: outfile
+    character(len=16),allocatable :: var_list(:),var_unit(:)
+    character(len=25),allocatable :: var_desc(:)
+    integer :: var_id,ncid
+    integer :: nvars
+    integer :: k
+    character(len=2) ::kk
+                                                                           
+    print*,"Building BDSNP_NFILE ..."
+    outfile='NDEP.nc'
+    nvars=12
+
+    allocate(var_list(nvars))
+    allocate(var_unit(nvars))
+    allocate(var_desc(nvars))
+    allocate(NITRO(g%nx,g%ny,nvars))  
                                                                             
-     print*,"Building BDSNP_NFILE ..."
-     outfile='NDEP.nc'
-     nvars=12
+    !Levanto netcdf input files
+    do k=1,nvars
+        write(kk,'(I0.2)') k
+        !call check(nf90_open(trim(nitro_files)//kk//".nc", nf90_write, ncid ))
+        !     call check(   nf90_inq_varid(ncid,'Band1', var_id ))
+        !     call check(   nf90_get_var(ncid, var_id , NITRO(:,:,k)  ))
+        !call check(nf90_close(ncid ))
+        NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc")
+    
+    enddo
+    where (NITRO < 0.0 )
+            NITRO=0.0
+    endwhere
+    NITRO=NITRO*1E+12! convert from kg/m2/s to ng/m2/s
 
-     allocate(var_list(nvars))
-     allocate(var_unit(nvars))
-     allocate(var_desc(nvars))
-     allocate(NITRO(g%nx,g%ny,nvars))  
-                                                                             
-     !Levanto netcdf input files
-     do k=1,nvars
-         write(kk,'(I0.2)') k
-         call check(nf90_open(trim(nitro_files)//kk//".nc", nf90_write, ncid ))
-              call check(   nf90_inq_varid(ncid,'Band1', var_id ))
-              call check(   nf90_get_var(ncid, var_id , NITRO(:,:,k)  ))
-              where (NITRO < 0.0 )
-                      NITRO=0.0
-              endwhere
-         call check(nf90_close(ncid ))
-     enddo
-     NITRO=NITRO*1E+12! convert from kg/m2/s to ng/m2/s
-
-     var_list=(/ 'NITROGEN01','NITROGEN02','NITROGEN03','NITROGEN04','NITROGEN05','NITROGEN06','NITROGEN07','NITROGEN08','NITROGEN09','NITROGEN10','NITROGEN11','NITROGEN12' /)
+    var_list=(/ 'NITROGEN01','NITROGEN02','NITROGEN03','NITROGEN04','NITROGEN05','NITROGEN06','NITROGEN07','NITROGEN08','NITROGEN09','NITROGEN10','NITROGEN11','NITROGEN12' /)
     var_unit = spread( "ng/m2/s         ",1,nvars)
     var_desc=spread("monthly average total nitrogen deposition",1,nvars) 
                                                                 
-     ! Create the NetCDF file
-     call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
-                                                                
-     !Abro NetCDF outFile
-     call check(nf90_open(outFile, nf90_write, ncid       ))
-      do k=1, nvars    
-        call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
-        call check(nf90_put_var(ncid, var_id, NITRO(:,:,k)))
-      enddo
-      !TFLAG:
-      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-      call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
-     call check(nf90_close( ncid ))
+    ! Create the NetCDF file
+    call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+                                                               
+    !Abro NetCDF outFile
+    call check(nf90_open(outFile, nf90_write, ncid       ))
+    do k=1, nvars    
+      call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
+      call check(nf90_put_var(ncid, var_id, NITRO(:,:,k)))
+    enddo
+    !TFLAG:
+    call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+    call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
+    call check(nf90_close( ncid ))
 
   end subroutine 
 end program

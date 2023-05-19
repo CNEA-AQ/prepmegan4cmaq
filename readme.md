@@ -20,6 +20,10 @@ Data required:
 
 
 ## Build
+Go to the ``src`` directory:
+
+`> cd src/`
+
 Edit the Makefile to set the compiler and path to NetCDF lib and include files. Check your `nc-config --libdir` and `nc-config --includedir`.
 
 `> make`
@@ -32,47 +36,44 @@ The command `gdalwarp` (from GDAL/OGR) is used to regrid, interpolate and reproj
 
 ## Run
 
-Edit the header of `prepmegan4cmaq.sh` script that contains the following variables:
+Edit the namelist `example.inp` that contains the following variables:
 
 ```shell
-#Input-Data:
-start_date="2019-01-01" #"%Y-%m-%d %H"
-  end_date="2019-01-01" #"%Y-%m-%d %H"
+&control
+start_date="2019-01-01" !"%Y-%m-%d %H"
+end_date="2019-01-01" !"%Y-%m-%d %H"
 
-  srsInp="epsg:4326"    #(latlon spatial reference system of input files)
+griddesc_file='./GRIDDESC_example'
+gridname='Argentina'
 
-GRIDDESC_file="/home/usuario/runs/papila2019/cmaq/mcip/GRIDDESC" #"./GRIDDESC_example"
-GRIDNAME="PAPILAGRID" #"Argentina"
+laiv_files='./input/laiv2003'            !LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
 
-#Input Files:
-       laiv_files='./input/laiv2003'                     #LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
+crop_frac_file='./input/GF3aCrop.nc'     !frac of crop   cover (%) - netCDF file path
+grass_frac_file='./input/GF3aGrass.nc'   !frac of grass  cover (%) - netCDF file path
+shrub_frac_file='./input/GF3aShrub.nc'   !frac of shrubs cover (%) - netCDF file path
+tree_frac_file='./input/GF3aTree.nc'     !frac of trees  cover (%) - netCDF file path
+nl_tree_frac_file='./input/NTfrac_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
+tp_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
+bl_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
 
-   crop_frac_file='./input/GF3aCrop.nc'                  #frac of crop   cover (%) - netCDF file path
-  grass_frac_file='./input/GF3aGrass.nc'                 #frac of grass  cover (%) - netCDF file path
-  shrub_frac_file='./input/GF3aShrub.nc'                 #frac of shrubs cover (%) - netCDF file path
-   tree_frac_file='./input/GF3aTree.nc'                  #frac of trees  cover (%) - netCDF file path
+ecotype_file='./input/EVT3b.nc'          !Gridded ecotypes ids         - netCDF file_path
+GtEcoEF_file="./db/GtEFbyEcotype.csv"    !Emission factor of each GT grouped by Ecotype
 
-nl_tree_frac_file='./input/NTfrac_reorder_lat.nc'        #frac of needleleaf trees (%) - netCDF file path
-tp_tree_frac_file='./input/tropfrac_reorder_lat.nc'      #frac of tropical   trees (%) - netCDF file path
+!BDSNP:
+arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc',       !     arid mask (0/1)- netCDF file path
+narid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc',  ! non arid mask (0/1)- netCDF file path
+lt_file='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_',               ! landtype           - netCDF files PREFIX
 
-     ecotype_file='./input/EVT3b.nc'                     #Gridded ecotypes ids         - netCDF file_path
-
-     GtEcoEFfile="./db/GtEFbyEcotype.csv"                #Emission factor of each GT grouped by Ecotype
-
-#Input files for BDSNP:
-arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc'          #     arid mask (0/1)- netCDF file path
-nonarid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc'   # non arid mask (0/1)- netCDF file path
-  landtype_files='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_'         # landtype           - netCDF files PREFIX
-
-  nitro_depo_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      # soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
-  #     fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             #Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
+nitro_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      ! soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
+!fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             !Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
+/
 ```
 
 Note that the variables must be adjusted to match the appropriate values for your system.
 
 Then execute `prepmegan4cmaq.sh`:
 
-`> ./prepmegan4cmaq.sh` 
+`> ./prepmegan4cmaq.exe < example.inp` 
 
 This script will regrid all the input files using GDAL and then execute the `prepmegan4cmaq.exe` program.
 
