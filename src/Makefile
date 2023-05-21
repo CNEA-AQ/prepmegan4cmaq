@@ -6,7 +6,7 @@ INC  = -I/usr/include
 FCFLAGS = -O2 -ffree-line-length-none #-Wunused 
 LDFLAGS = -O2
 EXE  = prepmegan4cmaq.exe
-OBJS = module_utils.o module_proj.o module_griddesc_reader.o module_nc_handler.o prepmegan4cmaq.o  #module_interp.o 
+OBJS = module_utils.o module_proj.o module_griddesc_reader.o module_nc_handler.o module_interp.o prepmegan4cmaq.o  #
 
 prepmegan4cmaq: $(OBJS)
 	$(FC) $(LDFLAGS) $(OBJS) $(LIBS) -o $(EXE)

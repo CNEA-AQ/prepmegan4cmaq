@@ -2,18 +2,18 @@
 start_date="2019-01-01" !"%Y-%m-%d %H"
   end_date="2019-01-01" !"%Y-%m-%d %H"
 
-    griddesc_file='./GRIDDESC'
-         gridname='MERC_TEST'
+griddesc_file='./GRIDDESC'
+     gridname='MERC_TEST'!'LCC_TAN_TEST',!
   
-        laiv_files='./input/laiv2003'             !LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
+       laiv_files='./input/laiv2003'             !LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
 
-    crop_frac_file='./input/GF3aCrop.nc'     !frac of crop   cover (%) - netCDF file path
-   grass_frac_file='./input/GF3aGrass.nc'    !frac of grass  cover (%) - netCDF file path
-   shrub_frac_file='./input/GF3aShrub.nc'    !frac of shrubs cover (%) - netCDF file path
-    tree_frac_file='./input/GF3aTree.nc'     !frac of trees  cover (%) - netCDF file path
- nl_tree_frac_file='./input/NTfrac_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
- tp_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
- bl_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
+   crop_frac_file='./input/GF3aCrop.nc'     !frac of crop   cover (%) - netCDF file path
+  grass_frac_file='./input/GF3aGrass.nc'    !frac of grass  cover (%) - netCDF file path
+  shrub_frac_file='./input/GF3aShrub.nc'    !frac of shrubs cover (%) - netCDF file path
+   tree_frac_file='./input/GF3aTree.nc'     !frac of trees  cover (%) - netCDF file path
+nl_tree_frac_file='./input/NTfrac_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
+tp_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
+bl_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
 
       ecotype_file='./input/EVT3b.nc'           !Gridded ecotypes ids         - netCDF file_path
      GtEcoEF_file="./db/GtEFbyEcotype.csv"      !Emission factor of each GT grouped by Ecotype
