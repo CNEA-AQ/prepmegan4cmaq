@@ -11,7 +11,7 @@ griddesc_file='./GRIDDESC'
   grass_frac_file='./input/GF3aGrass.nc'    !frac of grass  cover (%) - netCDF file path
   shrub_frac_file='./input/GF3aShrub.nc'    !frac of shrubs cover (%) - netCDF file path
    tree_frac_file='./input/GF3aTree.nc'     !frac of trees  cover (%) - netCDF file path
-nl_tree_frac_file='./input/NTfrac_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
+nl_tree_frac_file='./input/NTfrac.nc', !_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
 tp_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
 bl_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
 

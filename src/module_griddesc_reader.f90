@@ -26,6 +26,9 @@ contains
      endif
   enddo
   close(2)
+
+  call set_additional_proj_params(p)
+  call set_additional_grid_params(p,g)
  end subroutine
 
  subroutine set_additional_proj_params(p)

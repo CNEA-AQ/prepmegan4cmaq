@@ -84,12 +84,12 @@ contains
     allocate(var_desc(nvars))  
     allocate(CTS(g%nx,g%ny,1,nvars+1))  ! allocate(CTS(g%nx,g%ny,nvars))  
   
-    CTS(:,:,1,1)=interpolate(p,g,inp_file="./input/GF3aTree.nc"            ,varname="") !"GF3aTree.nc")   !,varname)
-    CTS(:,:,1,2)=interpolate(p,g,inp_file="./input/GF3aShrub.nc"           ,varname="") !   shrubfile)   !,varname)
-    CTS(:,:,1,3)=interpolate(p,g,inp_file="./input/GF3aCrop.nc"            ,varname="") !    cropfile)   !,varname)
-    CTS(:,:,1,4)=interpolate(p,g,inp_file="./input/GF3aGrass.nc"           ,varname="") !   grassfile)   !,varname)
-    CTS(:,:,1,5)=interpolate(p,g,inp_file="./input/NTfrac_reorder_lat.nc"  ,varname="") !  nltreefile)   !,varname)
-    CTS(:,:,1,6)=interpolate(p,g,inp_file="./input/tropfrac_reorder_lat.nc",varname="") !troptreefile)   !,varname)
+    CTS(:,:,1,1)=interpolate(p,g,inp_file=treefile,    varname="m20tree"  ) !"./input/GF3aTree.nc"            ,
+    CTS(:,:,1,2)=interpolate(p,g,inp_file=shrubfile,   varname="m204shrub") !"./input/GF3aShrub.nc"           ,
+    CTS(:,:,1,3)=interpolate(p,g,inp_file=cropfile,    varname="m20crop"  ) !"./input/GF3aCrop.nc"            ,
+    CTS(:,:,1,4)=interpolate(p,g,inp_file=grassfile,   varname="m202grass") !"./input/GF3aGrass.nc"           ,
+    CTS(:,:,1,5)=interpolate(p,g,inp_file=nltreefile,  varname="NTfrac"   ) !"./input/NTfrac_reorder_lat.nc"  ,
+    CTS(:,:,1,6)=interpolate(p,g,inp_file=troptreefile,varname="tropfrac" ) !"./input/tropfrac_reorder_lat.nc",
 
     !tropical tree
     CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6) 
@@ -154,7 +154,7 @@ contains
     do k=1,nvars
         write(kk,'(I0.2)') k
         print*,trim(laivfile)//kk//".nc"
-        LAIv(:,:,k)=interpolate(p,g,inp_file="laiv2003"//kk//"_30sec.nc",varname="") !"GF3aTree.nc")   !,varname)
+        LAIv(:,:,k)=interpolate(p,g,inp_file="laiv2003"//kk//"_30sec.nc",varname="laiv") 
     enddo
     where (LAIv < 0.0 )
             LAIv=0.0
@@ -214,13 +214,13 @@ contains
       allocate( ECOTYPE(g%nx, g%ny   ))   !ecotype         
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
 
-      ECOTYPE(:,:)=interpolate(p,g, trim(ecotypefile), varname="")
+      ECOTYPE(:,:)=interpolate(p,g, trim(ecotypefile), varname="ecotype")
 
       GTYP_LIST=(/'crop ','tree ','herb ','shrub'/)
-      GTYP(:,:,1)=interpolate(p,g, cropfile,varname="")
-      GTYP(:,:,2)=interpolate(p,g, treefile,varname="")
-      GTYP(:,:,3)=interpolate(p,g,grassfile,varname="")
-      GTYP(:,:,4)=interpolate(p,g,shrubfile,varname="")
+      GTYP(:,:,1)=interpolate(p,g, cropfile,varname="m20crop"  )
+      GTYP(:,:,2)=interpolate(p,g, treefile,varname="m20tree"  )
+      GTYP(:,:,3)=interpolate(p,g,grassfile,varname="m202grass" )
+      GTYP(:,:,4)=interpolate(p,g,shrubfile,varname="m204shrub")
       
       where (GTYP < 0.0 )
               GTYP=0.0
@@ -309,13 +309,13 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
-     LANDGRID(:,:,1) = interpolate(p,g,  arid_file, varname="")
-     LANDGRID(:,:,2) = interpolate(p,g, narid_file, varname="")
+     LANDGRID(:,:,1) = interpolate(p,g,  arid_file, varname="arid")
+     LANDGRID(:,:,2) = interpolate(p,g, narid_file, varname="non_arid")
      
      LANDGRID(:,:,3) =0.0 
      do lt=1,24
              write(landtypeId, '(I0.2)') lt
-             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc",varname="")) !DO AN INTEGER VERSION OF THIS
+             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc",varname="LANDFRAC")) !DO AN INTEGER VERSION OF THIS
      enddo
 
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
@@ -360,7 +360,7 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="")
+        NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="nitrogen")
     enddo
     where (NITRO < 0.0 )
             NITRO=0.0

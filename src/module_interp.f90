@@ -41,32 +41,34 @@ contains
  end function
 
 
-!HOME-MADE Interpolation function:
-!function interpolate(p,g,inpfile,varname)       result(img2)
+!!HOME-MADE Interpolation function:
+!function interpolate(p,g,inp_file,varname)       result(img2)
 ! implicit none
-! type(grid_type), intent(in)  :: g           !desired grid
-! type(proj_type), intent(in)  :: p           !proj of desired grid
-! character(*), intent(in)   :: inpfile,varname
+! type(grid_type), intent(in)  :: g  !desired grid
+! type(proj_type), intent(in)  :: p  !proj of desired grid
+! character(*), intent(in)   :: inp_file,varname
 ! 
-! real,allocatable :: img2(:,:)                  !output array
+! real,allocatable :: img2(:,:)      !output array
 !
 ! integer :: i,j,k
 !
-! type(grid_type)  :: GG,GC              !global grid (input grid) &  global grid (CROPPED)
-! real,allocatable :: img1(:,:)          !cropped img to be interpolated
+! type(grid_type)  :: GG,GC          !global grid (input grid) &  global grid (CROPPED)
+! real,allocatable :: img1(:,:)      !cropped img to be interpolated
 ! real,allocatable :: lat(:),lon(:)
 !
-! integer :: ncid,latid,lonid,varid         !int for netcdf handling
+! integer :: ncid,latid,lonid,varid  !int for netcdf handling
 !
-! integer :: is,ie,js,je                     !usefull indices
+! integer :: is,ie,js,je             !usefull indices
 ! real    :: px,py,x,y
 ! real    :: w11,w12,w21,w22 !weights for bilinear interpolation
-! real    :: p11,p12,p21,p22 !weights for bilinear interpolation
-! real    :: x1,x2,y1,y2     !weights for bilinear interpolation
-! integer :: i1,i2,j1,j2     !weights for bilinear interpolation
+! real    :: p11,p12,p21,p22 !params for bilinear interpolation
+! real    :: x1,x2,y1,y2     !params for bilinear interpolation
+! integer :: i1,i2,j1,j2     !params for bilinear interpolation
 !
-! !Leo inpfile:
-! call check(nf90_open(trim(inpfile), nf90_write, ncid ))
+! print*,"  Interpolando: "//trim(inp_file)//"..."
+!
+! !Leo inp_file:
+! call check(nf90_open(trim(inp_file), nf90_write, ncid ))
 !   call check( nf90_inq_dimid(ncid, "lat",latid )             )
 !   call check( nf90_inquire_dimension(ncid, latid, len=GG%ny ))
 !   call check( nf90_inq_dimid(ncid, "lon",lonid )             )
@@ -84,17 +86,17 @@ contains
 !   GG%latmin=lat(    1); GG%lonmin=lon(  1)     !lower-left corner?
 !   GG%latmax=lat(GG%ny); GG%lonmax=lon(GG%nx)   !upper-right corner?
 !
-!   GG%dy=ABS(GG%latmin-lat(2))            !delta lat
-!   GG%dx=ABS(GG%lonmin-lon(2))            !delta lon
+!   GG%dy=ABS(GG%latmin-lat(2))  !delta lat
+!   GG%dx=ABS(GG%lonmin-lon(2))  !delta lon
 !          !Checkear que sea una grilla regular
-!          if( ABS(GG%dy - ABS(GG%latmax-GG%latmin)/GG%ny) < 1E-5  ) then; print*,"Lat OK";else; print*,"Lat NO es regular.";stop;endif
-!          if( ABS(GG%dx - ABS(GG%lonmax-GG%lonmin)/GG%nx) < 1E-5  ) then; print*,"Lon OK";else; print*,"Lon NO es regular.";stop;endif
+!          if( ABS(GG%dy - ABS(GG%latmax-GG%latmin)/GG%ny) < 1E-5  ) then; continue;else; print*,"Lat NO es regular.";stop;endif
+!          if( ABS(GG%dx - ABS(GG%lonmax-GG%lonmin)/GG%nx) < 1E-5  ) then; continue;else; print*,"Lon NO es regular.";stop;endif
 !   !------------------------------------------------------
 !   !!(1) Genero parametros de grilla recortada:
-!   is= MAX(1     ,  FLOOR(( (g%lonmin-GG%lonmin) )/GG%dx) ) !calc min y max indices    
-!   ie= MIN(GG%nx ,CEILING(( (g%lonmax-GG%lonmin) )/GG%dx) ) !calc min y max indices 
-!   js= MAX(  1   ,  FLOOR(( (g%latmin-GG%latmin) )/GG%dy) ) !calc min y max indices
-!   je= MIN(GG%ny ,CEILING(( (g%latmax-GG%latmin) )/GG%dy) ) !calc min y max indices
+!   is= MAX(  1   ,   FLOOR( (g%lonmin-GG%lonmin)/GG%dx) ) !calc min y max indices    
+!   ie= MIN(GG%nx , CEILING( (g%lonmax-GG%lonmin)/GG%dx) ) !calc min y max indices 
+!   js= MAX(  1   ,   FLOOR( (g%latmin-GG%latmin)/GG%dy) ) !calc min y max indices
+!   je= MIN(GG%ny , CEILING( (g%latmax-GG%latmin)/GG%dy) ) !calc min y max indices
 !   
 !   GC%nx=ABS(ie-is)+1;  GC%ny=ABS(je-js)+1 
 !   GC%dx=GG%dx       ;  GC%dy=GG%dy       
@@ -103,28 +105,27 @@ contains
 !
 !   deallocate(lat)
 !   deallocate(lon)
-!       print*,"GC: indices for lon",is,"-",ie;   
-!       print*,"GC: indices for lat",js,"-",je
-!       !print*,"GG: ncols, nrows:  ",GG%nx,GG%ny
-!       !print*,"GG: lat: min max dl",GG%latmin,GG%latmax,GG%dy; !print*,"dl, dl",GG%dx, ABS(GG%lonmax-GG%lonmin)/(GG%nx)
-!       !print*,"GG: lon: min max dl",GG%lonmin,GG%lonmax,GG%dx; !print*,"dl, dl",GG%dy, ABS(GG%latmax-GG%latmin)/(GG%ny)
-!       print*,"GC: ncols, nrows:  ",GC%nx,GC%ny
-!       print*,"GC: lat: min max dl",GC%latmin,GC%latmax,GC%dy 
-!       print*,"GC: lon: min max dl",GC%lonmin,GC%lonmax,GC%dx
-!       print*,"g : ncols, nrows:  ",g%nx,g%ny 
-!       print*,"g : lat: min max dl",g%latmin,g%latmax,g%dy 
-!       print*,"g : lon: min max dl",g%lonmin,g%lonmax,g%dx
-!   !------------------------------------------------------
-!   !!(2) Crop Img original                               
-!   !allocate(img1(GC%nx, GC%ny))
-!   !img1=img(is:ie,je:js:-1)          !aca invierto el orden de "y" para que quede ordenado de forma creciente.                      
 !   allocate(img1(GC%nx, GC%ny)) 
-!
 !   !var (esto es lo que mas tarda)--------------------------     
 !   call check( nf90_inq_varid(ncid,trim(varname), varid ))
 !   call check( nf90_get_var(ncid, varid , img1(1:GC%nx,GC%ny:1:-1), start=[is,GG%ny-je],count=[GC%nx,GC%ny] ) ) !Acá tarda MUCHO..
 !   !--------------------------------------------------------     
 ! call check(nf90_close(ncid))
+!   !print*,"GC: indices for lon",is,"-",ie;   
+!       !print*,"GC: indices for lat",js,"-",je
+!       !print*,"GG: ncols, nrows:  ",GG%nx,GG%ny
+!       !print*,"GG: lat: min max dl",GG%latmin,GG%latmax,GG%dy; !print*,"dl, dl",GG%dx, ABS(GG%lonmax-GG%lonmin)/(GG%nx)
+!       !print*,"GG: lon: min max dl",GG%lonmin,GG%lonmax,GG%dx; !print*,"dl, dl",GG%dy, ABS(GG%latmax-GG%latmin)/(GG%ny)
+!       !print*,"GC: ncols, nrows:  ",GC%nx,GC%ny
+!       !print*,"GC: lat: min max dl",GC%latmin,GC%latmax,GC%dy 
+!       !print*,"GC: lon: min max dl",GC%lonmin,GC%lonmax,GC%dx
+!       !print*,"g : ncols, nrows:  ",g%nx,g%ny 
+!       !print*,"g : lat: min max dl",g%latmin,g%latmax,g%dy 
+!       !print*,"g : lon: min max dl",g%lonmin,g%lonmax,g%dx
+!   !------------------------------------------------------
+!   !!(2) Crop Img original                               
+!   !allocate(img1(GC%nx, GC%ny))
+!   !img1=img(is:ie,je:js:-1)          !aca invierto el orden de "y" para que quede ordenado de forma creciente.                      
 ! 
 !     !!Esto es solo de testeo de grilla cropeada
 !     !! Create the NetCDF file
@@ -143,7 +144,6 @@ contains
 ! allocate(img2(g%nx,g%ny))  !array a interpolar:
 ! do i=1,g%nx
 !    do j=1,g%ny
-!        
 !        !Position where to interpolate
 !        px=g%xmin+g%dx*i  !projected coordinate-x
 !        py=g%ymin+g%dy*j  !projected coordinate-y
@@ -171,12 +171,7 @@ contains
 !            w12 =(x  - x1)*(y2 - y )/(GC%dx*GC%dy)
 !            w21 =(x2 - x )*(y  - y1)/(GC%dx*GC%dy)
 !            w22 =(x  - x1)*(y  - y1)/(GC%dx*GC%dy)
-!                !if (p11 > 0 .or. p21 > 0) then
-!                !    print*,"i1,i2,i1,i2:",i1,i2,i1,i2
-!                !    print*,"x,y,x1,y1,x2,y2:",x,y,x1,x2,y1,y2
-!                !    print*,"p11,p12,p21,p22:",p11,p12,p21,p22
-!                !    print*,"w11,w12,w21,w22:",w11,w12,w21,w22
-!                !endif
+!            
 !            !Bilineal formula:
 !            img2(i,j)= p11*w11 + p12*w12 + p21*w21 + p22*w22 ! DOT_PRODUCT(p,w)
 !        else
@@ -190,141 +185,3 @@ contains
 
 end module
 
-
-!contains
-!
-!function interpolate(p,g,inpfile)   result (img)
-!  implicit none
-!  type(grid_type) ,intent(in) :: g
-!  type(proj_type) ,intent(in) :: p
-!  character(*),intent(in) :: inpfile,varname
-!  real,allocatable :: img(:,:)
-!
-!
-!
-!
-!
-!
-!end function
-!
-!
-!subroutine interpolate(Im1, X1, Y1, Im2, X2, Y2)
-!  implicit none
-!  real, intent(in) :: X1(:), Y1(:), X2(:), Y2(:)
-!  real, intent(in)    :: Im1(:,:)
-!  real, intent(inout) :: Im2(:,:)
-!  integer :: N1, N2, i, j
-!  real :: u, v
-!  real :: w1, w2, w3, w4
-!  
-!  N1 = size(Im1, 1) ! Number of rows in Im1
-!  N2 = size(Im2, 1) ! Number of rows in Im2
-!  
-!  ! Perform bilinear interpolation
-!  do i = 1, N2
-!    do j = 1, N2
-!      where(X1 >= 1.0_r8 .and. X1 <= N1 .and. Y1 >= 1.0_r8 .and. Y1 <= N1)
-!        ! Calculate integer indices and interpolation weights
-!        u = X1(j) - floor(X1(j))
-!        v = Y1(i) - floor(Y1(i))
-!        
-!        ! Perform bilinear interpolation
-!        w1 = (1.0_r8 - u) * (1.0_r8 - v)
-!        w2 = u * (1.0_r8 - v)
-!        w3 = (1.0_r8 - u) * v
-!        w4 = u * v
-!        
-!        Im2(i,j) = w1 * Im1(int(X1(j)), int(Y1(i))) &
-!                 + w2 * Im1(int(X1(j))+1, int(Y1(i))) &
-!                 + w3 * Im1(int(X1(j)), int(Y1(i))+1) &
-!                 + w4 * Im1(int(X1(j))+1, int(Y1(i))+1)
-!      elsewhere
-!        ! Set Im2 to a default value when (X1, Y1) is outside the valid range
-!        Im2(i,j) = 0
-!      end where
-!    end do
-!  end do
-!end subroutine
-!
-!
-!!        !Bilinear Interpolation:
-!!        !
-!!        !  Im1(X1,Y1) --> Im2(X2,Y2)
-!!        !
-!!        !
-!!        !
-!!        !
-!!
-!!
-!!subroutine interpolate(Im1,X1,Y1,Im2,X2,Y2)
-!!        implicit none
-!!        real, intent(in),    allocatable :: Im1(:), X1(:) ,Y1(:)   !original image
-!!        real, intent(inout), allocatable :: Im2(:), X2(:) ,Y2(:)   !interpolated image
-!!        
-!!        x1 =   FLOOR(x)
-!!        x2 = CEILING(x)
-!!        y1 =   FLOOR(y)
-!!        y2 = CEILING(y)
-!!                                                               
-!!        w(1) =  (x2-x )*(y2-y )/(x2-x1)/(y2-y1)
-!!        w(2) =  (x -x1)*(y2-y )/(x2-x1)/(y2-y1)
-!!        w(3) =  (x2-x )*(y2-y )/(x2-x1)/(y2-y1)
-!!        w(4) =  (x2-x )*(y2-y )/(x2-x1)/(y2-y1)
-!!
-!!        Im2=dot_product(Im1,w)
-!!
-!!        wx1 = x2-x
-!!        wy1 = y2-y
-!!                                                                       
-!!        wx2 = 1 - wx1
-!!        wy2 = 1 - wy1
-!!                                                                       
-!!        FORALL( jj=1 : NPts)
-!!                                                                       
-!!           Im2(jj) = wy1(jj)*(
-!!                              wx1(jj)*Im1(y1(jj),x1(jj))  + wx2(jj)*
-!!           $                          Im1(y1(jj),x2(jj))) + wy2(jj)*
-!!                             (
-!!                             wx1(jj)*
-!!           $                          Im1(y2(jj),x1(jj))  + wx2(jj)*
-!!                                      Im1(y2(jj),x2(jj))
-!!                                      )
-!!                                                                       
-!!        END FORALL
-!!
-!!
-!!subroutine
-!!
-!!SUBROUTINE L2DINTERPOL(IntIm,Image,x,y,NPts,M,N)
-!!  implicit none
-!!
-!!  mwSize, PARAMETER             :: dp = kind(0.d0) ! Double precision
-!!  mwSize                        :: NPts, M,N       ! Input
-!!  REAL(dp),DIMENSION(Npts)      :: x,y             ! Input
-!!  REAL(dp),DIMENSION(M,N)       :: Image           ! Input
-!!  mwSize                        :: jj
-!!  mwSize, DIMENSION(NPts)       :: x1,y1,x2,y2      
-!!  REAL(dp),DIMENSION(Npts)      :: wx1,wx2,wy1,wy2
-!!  REAL(dp),DIMENSION(Npts)      :: IntIm           ! Output
-!!
-!!
-!!  x1 = FLOOR(x)
-!!  x2 = CEILING(x)
-!!  y1 = FLOOR(y)
-!!  y2 = CEILING(y)
-!!
-!!  wx1 = x2-x
-!!  wy1 = y2-y
-!!
-!!  wx2 = 1 - wx1
-!!  wy2 = 1 - wy1
-!!
-!!  FORALL( jj=1 : NPts)
-!!
-!!     IntIm(jj) = wy1(jj)*(wx1(jj)*Image(y1(jj),x1(jj))+wx2(jj)*
-!! $        Image(y1(jj),x2(jj))) + wy2(jj)*(wx1(jj)*
-!!     $        Image(y2(jj),x1(jj))+wx2(jj)*Image(y2(jj),x2(jj)))
-!!
-!!  END FORALL
-!!END 
-!!
