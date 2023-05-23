@@ -47,9 +47,9 @@ program prepmegan4cmaq
   
   !BDSNP:
   !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
-  call BDSNP_LAND(grid,proj,arid_file,narid_file,lt_file)
+  !call BDSNP_LAND(grid,proj,arid_file,narid_file,lt_file)
 
-  call BDSNP_NFILE(grid,proj,nitro_files)   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
+  !call BDSNP_NFILE(grid,proj,nitro_files)   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
   !call BDSNP_FFILE()                       !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
 
 print*, "========================================="

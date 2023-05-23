@@ -9,6 +9,12 @@
 #	- lon = 43200 ; (-180 a 180 degrees )	orden creciente!
 #	- lat = 16800 ;	(-57  a  82 degrees )   orden creciente!
 #
+#Data types: 
+#
+# byte (          -128 to 127            )
+# short(       -32,768 to 32,767         )
+# int  (-2,147,483,648 to 2,147,483,647  )
+# float(                                 )
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Original:			         Deseado:							
 # ├── EVT3b.nc                           ├── veg_Ecotypes.nc	         [int  ] (ecotype)					       ( 2Gb)
@@ -28,9 +34,9 @@
 #     ├── soil_fert_002.nc               
 #     ├── ...                            
 #     ├── soil_fert_366.nc               
-#     ├── soil_landtype_01.nc            
-#     ├── ...                            
-#     ├── soil_landtype_24.nc            
+#     ├── soil_landtype_01.nc   ( 1Gb)         
+#     ├── ...                   ( 1Gb)         
+#     ├── soil_landtype_24.nc   ( 1Gb)         
 #     ├── soil_nitrogen_mon01.nc         
 #     ├── ...                            
 #     └── soil_nitrogen_mon12.nc         
@@ -84,20 +90,18 @@ done
 # Luego agregar las dos capas "arid" y "nonarid"
 ncks -4 -O -v "lat" MEGAN31_Prep_Input_soil_191022/soil_landtype_01.nc tmp.nc
 ncks -4 -A -v "lon" MEGAN31_Prep_Input_soil_191022/soil_landtype_01.nc tmp.nc
+ncks -4 -A -v LANDFRAC MEGAN31_Prep_Input_soil_191022/soil_landtype_01.nc tmp.nc
+ncap2 -h -A -C -s "landtype=LANDFRAC" tmp.nc tmp.nc
 
-for lt0 in $(seq --format="%02.0f" 1 24)
+for lt0 in $(seq --format="%02.0f" 2 24)
 do
-	lt="$(printf "%d" ${lt0})";
-
 	file=MEGAN31_Prep_Input_soil_191022/soil_landtype_${lt0}.nc
-        ncks -A -v LANDFRAC $file -o tmp.nc
-        #ncap2 -h -A -C -s "landtype=landtype+LANDFRAC*${lt};LANDFRAC=0.0" tmp.nc
-	#ncap2 -O -s 'landtype01=file1_landtype[:]*1;' -s 'landtype02=file2_landtype[:]*2;' ... -s 'finalLandtype=landtype01+landtype02+...;' output.nc
+        ncks  -4 -A -v LANDFRAC $file tmp.nc
+	ncap2 -4 -h -A -s "LANDFRAC=LANDFRAC*${lt0};landtype=landtype+LANDFRAC;LANDFRAC=0" tmp.nc tmp.nc
 done
-			
-                        
-
-
+ncap2 -h -A -C -s "landtype=byte(landtype)" tmp.nc tmp.nc
+ncks -O -x -v LANDFRAC tmp.nc soil_landtype.nc
+rm tmp.nc
 
 #----------------------------
 # Nitro
@@ -109,4 +113,13 @@ done
 
 
 
+
+
+#============================
+#Probblems i have faced:
+# + 
+# + 
+# + 
+# + 
+ 
 
