@@ -16,30 +16,32 @@
 # int  (-2,147,483,648 to 2,147,483,647  )
 # float(                                 )
 #--------------------------------------------------------------------------------------------------------------------------------------------
-# Original:			         Deseado:							
-# ├── EVT3b.nc                           ├── veg_Ecotypes.nc	         [int  ] (ecotype)					       ( 2Gb)
-# ├── GF3aCrop.nc                        ├── veg_GrowthFormFractions.nc  [byte ] (crop, grass, shrub, tree, nl_tree, bl_tree, tp_tree) ( 5Gb)
-# ├── GF3aGrass.nc                       ├── veg_LAIv.nc                 [short] (laiv01,...,laiv12)				       (    )
-# ├── GF3aShrub.nc                       ├── soil_Landtype.nc            [byte ] (landtype,arid, nonarid)			       (    )
-# ├── GF3aTree.nc                        ├── soil_Nitro.nc               [float] (nitro01,...,nitro12)				       (    )
-# ├── NTfrac_reorder_lat.nc              └── soil_Fert.nc                [float] (fert01,...,fert365)				       (    )
-# ├── tropfrac_reorder_lat.nc            											--------------
-# ├── laiv200301_30sec.nc                                                                                                       Total. (  Gb)
-# ├── ...                                
-# ├── laiv200312_30sec.nc                
-# └── MEGAN31_Prep_Input_soil_191022     
-#     ├── soil_climate_arid.nc           
-#     ├── soil_climate_non_arid.nc       
-#     ├── soil_fert_001.nc               
-#     ├── soil_fert_002.nc               
-#     ├── ...                            
-#     ├── soil_fert_366.nc               
-#     ├── soil_landtype_01.nc   ( 1Gb)         
-#     ├── ...                   ( 1Gb)         
-#     ├── soil_landtype_24.nc   ( 1Gb)         
+# Original:			                  Deseado:                                                                                  
+# ├── EVT3b.nc              [btye  ]  ( 1.5Gb)    ├── veg_Ecotypes.nc   [int  ] (ecotype)				              (1.5Gb)
+# ├── GF3aCrop.nc           [btye  ]  ( 0.7Gb)    ├── veg_GrowthForm.nc [byte ] (crop,grass,shrub,tree,nl_tree,bl_tree,tp_tree)       (  3Gb)
+# ├── GF3aGrass.nc          [btye  ]  ( 0.7Gb)    ├── veg_LAIv.nc       [short] (laiv01,...,laiv12)		                      (     )
+# ├── GF3aShrub.nc          [btye  ]  ( 0.7Gb)    ├── soil_Landtype.nc  [byte ] (landtype,arid, nonarid)		              (  4Mb)
+# ├── GF3aTree.nc           [btye  ]  ( 0.7Gb)    ├── soil_Nitro.nc     [float] (nitro01,...,nitro12)		                      (     )
+# ├── NTfrac_reorder_lat.nc [float ]  ( 2.0Gb)    └── soil_Fert.nc      [float] (fert01,...,fert365)		                      (     )
+# ├── tropfrac_reorder_lat.nc [byte]  ( 0.6Gb)                        						
+# ├── laiv200301_30sec.nc                                                                                       
+# ├── ...                   [float ]  (      )
+# ├── laiv200312_30sec.nc                    
+# └── MEGAN31_Prep_Input_soil_191022         
+#     ├── soil_climate_arid.nc        (  1Mb )
+#     ├── soil_climate_non_arid.nc    (  1Mb )
+#     ├── soil_fert_001.nc                   
+#     ├── soil_fert_002.nc                   
+#     ├── ...                         ( 366Mb)
+#     ├── soil_fert_366.nc                   
+#     ├── soil_landtype_01.nc        
+#     ├── ...                         (  24Mb)         
+#     ├── soil_landtype_24.nc         
 #     ├── soil_nitrogen_mon01.nc         
-#     ├── ...                            
+#     ├── ...                         (  12Mb)
 #     └── soil_nitrogen_mon12.nc         
+#                                    ----------                                                                                --------------
+#                              Total. ( ~8 Gb)                                                                                  Total.( ~6Gb)
 #--------------------------------------------------------------------------------------------------------------------------------------------
 
 #----------------------------
@@ -49,8 +51,8 @@ mv EVT3b.nc veg_Ecotypes.nc
 #Growtht Form:
 
 #NTfrac esta invertido en la direccion-y (respecto de los demas) y es tipo "float", asi que lo convierto para que me quede como el resto.
-ncpdq -a -lat NTfrac_reorder_lat.nc NTfrac.nc
-ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=0.0; where(NTfrac>0) NTfrac=NTfrac*100;" NTfrac.nc tmp.nc
+ncpdq -4 -a -lat NTfrac_reorder_lat.nc NTfrac.nc
+ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=0.0; where(NTfrac>0) NTfrac=NTfrac*100; NTfrac = byte(NTfrac)" NTfrac.nc tmp.nc
 ncap2 -4 -O -s "NTfrac = byte(NTfrac)" tmp.nc NTfrac.nc
 #tropFrac es solo (0/1).
 
@@ -105,16 +107,29 @@ rm tmp.nc
 
 #----------------------------
 # Nitro
+for mm in $(seq --format="%02.0f" 1 12)
+do
+	m="$(printf "%d" ${mm})";
 
+	file=MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon${mm}.nc 
+	echo "$file, nitrogen"
 
+	ncks -4 -A -v "nitrogen" $file tmp.nc
+	ncrename -v "nitrogen",nitro${mm} tmp.nc
 
+done
+mv tmp.nc soil_nitro.nc
 #----------------------------
 # Ferti
+for ddd in $(seq --format="%03.0f" 1 366)
+do
+	file=MEGAN31_Prep_Input_soil_191022/soil_fert_${ddd}.nc 
+	echo "$file, fert"
+	ncks -h -4 -A -v "fert" $file tmp.nc
+	ncrename -h -v "fert",fert${ddd} tmp.nc
 
-
-
-
-
+done
+mv tmp.nc soil_fert.nc
 #============================
 #Probblems i have faced:
 # + 
