@@ -90,16 +90,16 @@ contains
     CTS(:,:,1,4)=interpolate(p,g,inp_file=grassfile,   varname="m202grass") !"./input/GF3aGrass.nc"           ,
     CTS(:,:,1,5)=interpolate(p,g,inp_file=nltreefile,  varname="NTfrac"   ) !"./input/NTfrac_reorder_lat.nc"  ,
     CTS(:,:,1,6)=interpolate(p,g,inp_file=troptreefile,varname="tropfrac" ) !"./input/tropfrac_reorder_lat.nc",
-
+    where ( CTS < 0 .or. CTS > 100 )
+         CTS=0
+    end where
     !tropical tree
     CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6) 
     !needleleaf tree
     CTS(:,:,1,5)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * CTS(:,:,1,5)    
     !boradleaf tree
     CTS(:,:,1,7)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * (1.0-CTS(:,:,1,5))
-    where ( CTS < 0.0 )
-         CTS=0.0
-    end where
+    
     var_list=(/ 'SHRUB      ','CROP       ','HERB       ','NEEDL      ','TROPI      ','BROAD      '/)
     var_desc=(/ "shrub fraction         ","crop fraction          ","grass fraction         ", "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction" /) 
     var_unit=spread("nondimension",1,nvars)

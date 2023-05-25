@@ -19,12 +19,12 @@
 # Original:			                  Deseado:                                                                                  
 # ├── EVT3b.nc              [btye  ]  ( 1.5Gb)    ├── veg_Ecotypes.nc   [int  ] (ecotype)				              (1.5Gb)
 # ├── GF3aCrop.nc           [btye  ]  ( 0.7Gb)    ├── veg_GrowthForm.nc [byte ] (crop,grass,shrub,tree,nl_tree,bl_tree,tp_tree)       (  3Gb)
-# ├── GF3aGrass.nc          [btye  ]  ( 0.7Gb)    ├── veg_LAIv.nc       [short] (laiv01,...,laiv12)		                      (     )
-# ├── GF3aShrub.nc          [btye  ]  ( 0.7Gb)    ├── soil_Landtype.nc  [byte ] (landtype,arid, nonarid)		              (  4Mb)
-# ├── GF3aTree.nc           [btye  ]  ( 0.7Gb)    ├── soil_Nitro.nc     [float] (nitro01,...,nitro12)		                      (     )
-# ├── NTfrac_reorder_lat.nc [float ]  ( 2.0Gb)    └── soil_Fert.nc      [float] (fert01,...,fert365)		                      (     )
-# ├── tropfrac_reorder_lat.nc [byte]  ( 0.6Gb)                        						
-# ├── laiv200301_30sec.nc                                                                                       
+# ├── GF3aGrass.nc          [btye  ]  ( 0.7Gb)    ├── veg_LAIv.nc  *    [short] (laiv01,...,laiv12)		                      (     )
+# ├── GF3aShrub.nc          [btye  ]  ( 0.7Gb)    ├── soil_climate.nc   [byte ] (arid, nonarid)                                       (     )
+# ├── GF3aTree.nc           [btye  ]  ( 0.7Gb)    ├── soil_Landtype.nc  [byte ] (landtype)		                              (  4Mb)
+# ├── NTfrac_reorder_lat.nc [float ]  ( 2.0Gb)    ├── soil_Nitro.nc*    [float] (nitro01,...,nitro12)		                      (     )
+# ├── tropfrac_reorder_lat.nc [byte]  ( 0.6Gb)    └── soil_Ferti.nc*    [float] (fert01,...,fert365)		                      (     )
+# ├── laiv200301_30sec.nc      
 # ├── ...                   [float ]  (      )
 # ├── laiv200312_30sec.nc                    
 # └── MEGAN31_Prep_Input_soil_191022         
@@ -52,7 +52,7 @@ mv EVT3b.nc veg_Ecotypes.nc
 
 #NTfrac esta invertido en la direccion-y (respecto de los demas) y es tipo "float", asi que lo convierto para que me quede como el resto.
 ncpdq -4 -a -lat NTfrac_reorder_lat.nc NTfrac.nc
-ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=0.0; where(NTfrac>0) NTfrac=NTfrac*100; NTfrac = byte(NTfrac)" NTfrac.nc tmp.nc
+ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=0.0; where(NTfrac > 999) NTfrac=0.0; where(NTfrac>0) NTfrac=NTfrac*100; NTfrac = byte(NTfrac)" NTfrac.nc tmp.nc
 ncap2 -4 -O -s "NTfrac = byte(NTfrac)" tmp.nc NTfrac.nc
 #tropFrac es solo (0/1).
 
