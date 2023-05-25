@@ -9,7 +9,7 @@ module interpolate_mod
 
 contains
 
-!!!HOME-MADE Interpolation function:
+!!"HOME-MADE" interpolation function:
 function interpolate(p,g,inp_file,varname)       result(img2)
  implicit none
  type(grid_type), intent(in)  :: g  !desired grid
@@ -26,12 +26,12 @@ function interpolate(p,g,inp_file,varname)       result(img2)
 
  integer :: ncid,latid,lonid,varid  !int for netcdf handling
 
- integer :: is,ie,js,je     !dummy extra indices
- real    :: px,py,x,y       !
+ integer :: is,ie,js,je     !indices that defines subarray
+ real    :: px,py,x,y       !dummy variables for temporal coordinates
  real    :: w11,w12,w21,w22 !weights for bilinear interpolation
  real    :: p11,p12,p21,p22 !params. for bilinear interpolation
  real    :: x1,x2,y1,y2     !params. for interpolation
- integer :: i1,i2,j1,j2     !params. for interpolation
+ integer :: i1,i2,j1,j2     !dummy indexes for interpolation
 
  integer :: scale_x,scale_y
 
@@ -63,10 +63,10 @@ function interpolate(p,g,inp_file,varname)       result(img2)
         if( ABS(GG%dx - ABS(GG%lonmax-GG%lonmin)/(GG%nx-1)) < 1E-5  ) then; continue;else; print*,"Lon NO es regular.",GG%dx;stop;endif
         if( ABS(GG%dy - ABS(GG%latmax-GG%latmin)/(GG%ny-1)) < 1E-5  ) then; continue;else; print*,"Lat NO es regular.",GG%dy;stop;endif
    !indices de sub-array:
-   is= MAX(  1   ,   FLOOR( (g%lonmin-GG%lonmin)/GG%dx) ) !calc min y max indices    
-   ie= MIN(GG%nx , CEILING( (g%lonmax-GG%lonmin)/GG%dx) ) !calc min y max indices 
-   js= MAX(  1   ,   FLOOR( (g%latmin-GG%latmin)/GG%dy) ) !calc min y max indices
-   je= MIN(GG%ny , CEILING( (g%latmax-GG%latmin)/GG%dy) ) !calc min y max indices
+   is=MAX(  1   ,   FLOOR( (g%lonmin-GG%lonmin)/GG%dx) ) !calc min y max indices    
+   ie=MIN(GG%nx , CEILING( (g%lonmax-GG%lonmin)/GG%dx) ) !calc min y max indices 
+   js=MAX(  1   ,   FLOOR( (g%latmin-GG%latmin)/GG%dy) ) !calc min y max indices
+   je=MIN(GG%ny , CEILING( (g%latmax-GG%latmin)/GG%dy) ) !calc min y max indices
    !parametros de grilla:
    GC%nx=ABS(ie-is)+1;  GC%ny=ABS(je-js)+1 
    GC%dx=GG%dx       ;  GC%dy=GG%dy       
@@ -92,8 +92,8 @@ function interpolate(p,g,inp_file,varname)       result(img2)
  call xy2ll(p,g%xmin,g%ymin,x1,y1)  !
  call xy2ll(p,g%xmax,g%ymax,x2,y2)  !
 
- scale_x=FLOOR((x2-x1)/(g%nx)/GC%dx)
- scale_y=FLOOR((y2-y1)/(g%ny)/GC%dy)
+ scale_x=CEILING((x2-x1)/(g%nx)/GC%dx)
+ scale_y=CEILING((y2-y1)/(g%ny)/GC%dy)
 
  if (scale_x > 10 .or. scale_y > 10 ) then
     !! Average:
@@ -106,13 +106,13 @@ function interpolate(p,g,inp_file,varname)       result(img2)
                                                                                        
            call xy2ll(p,px,py,x,y)  !I want coordinates in same proj than global file.
 
-           i1=MAX(     1, FLOOR( (x-GC%lonmin) / GC%dx - scale_x*0.5 )  )
-           j1=MAX(     1, FLOOR( (y-GC%latmin) / GC%dy - scale_y*0.5 )  )
+           i1=MAX(     1, FLOOR( (x-GC%lonmin) / GC%dx - scale_x*0.5 ) )
+           j1=MAX(     1, FLOOR( (y-GC%latmin) / GC%dy - scale_y*0.5 ) )
            i2=MIN( GC%nx, i1+scale_x                                   )
            j2=MIN( GC%ny, j1+scale_y                                   )
 
            if ( i1 > 1 .and. i2 < GC%nx .and. j1 > 1 .and. j2 < GC%ny ) then
-               img2(i,j)=SUM(img1(i1:i2,j1:j2))/((i2-i1)*(j2-j1))
+               img2(i,j)=SUM(img1(i1:i2,j1:j2))/((i2-i1)*(j2-j1))  !average
            else
                img2(i,j)=0
            endif
@@ -134,25 +134,25 @@ function interpolate(p,g,inp_file,varname)       result(img2)
            i1=FLOOR( (x-GC%lonmin) / GC%dx );  i2=i1+1
            j1=FLOOR( (y-GC%latmin) / GC%dy );  j2=j1+1
            if ( i1 > 1 .and. i2 <= GC%nx .and. j1 > 1 .and. j2 <= GC%ny ) then
-               !points (coordinates)    !   p12(i1,j2)    p22(i2,j2)
-               x1=GC%lonmin+GC%dx*i1    !       *- - - - - -*            
-               x2=GC%lonmin+GC%dx*i2    !       |           |           
-               y1=GC%latmin+GC%dy*j1    !       |           |           
-               y2=GC%latmin+GC%dy*j2    !       |           |           
-               !points (values)         !       |           |           
-               p11=img1(i1,j1)          !       *- - - - - -*                                    
-               p12=img1(i1,j2)          !   p11(i1,j1)    p21(i2,j1)
-               p21=img1(i2,j1)
-               p22=img1(i2,j2)
-               !weights:
-               w11 =(x2 - x )*(y2 - y )/(GC%dx*GC%dy)
-               w12 =(x  - x1)*(y2 - y )/(GC%dx*GC%dy)
-               w21 =(x2 - x )*(y  - y1)/(GC%dx*GC%dy)
-               w22 =(x  - x1)*(y  - y1)/(GC%dx*GC%dy)
-               !Bilineal formula:
-               img2(i,j)= p11*w11 + p12*w12 + p21*w21 + p22*w22 ! DOT_PRODUCT(p,w)
+              !points (coordinates)    !   p12(i1,j2)    p22(i2,j2)
+              x1=GC%lonmin+GC%dx*i1    !       *- - - - - -*            
+              x2=GC%lonmin+GC%dx*i2    !       |           |           
+              y1=GC%latmin+GC%dy*j1    !       |           |           
+              y2=GC%latmin+GC%dy*j2    !       |           |           
+              !points (values)         !       |           |           
+              p11=img1(i1,j1)          !       *- - - - - -*                                    
+              p12=img1(i1,j2)          !   p11(i1,j1)    p21(i2,j1)
+              p21=img1(i2,j1)
+              p22=img1(i2,j2)
+              !weights:
+              w11 =(x2 - x )*(y2 - y )/(GC%dx*GC%dy)
+              w12 =(x  - x1)*(y2 - y )/(GC%dx*GC%dy)
+              w21 =(x2 - x )*(y  - y1)/(GC%dx*GC%dy)
+              w22 =(x  - x1)*(y  - y1)/(GC%dx*GC%dy)
+              !Bilineal formula:
+              img2(i,j)= p11*w11 + p12*w12 + p21*w21 + p22*w22 ! DOT_PRODUCT(p,w)
            else
-               img2(i,j)=0.0
+              img2(i,j)=0.0
            endif
        enddo
     enddo
@@ -161,7 +161,6 @@ function interpolate(p,g,inp_file,varname)       result(img2)
  end function
 
 !============================================================================================
-!
 !!Funcion de intepolación usando GDAL/OGR..
 ! function interpolate(p,g,inp_file,varname)   result (img)
 !    implicit none
