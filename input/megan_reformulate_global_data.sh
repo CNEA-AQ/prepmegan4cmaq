@@ -75,9 +75,10 @@ ncks -4 -O -v "lat" laiv200301_30sec.nc tmp.nc
 ncks -4 -A -v "lon" laiv200301_30sec.nc tmp.nc
 
 NAMES=(" " "LAI_for_Jan_2003_\(m2_per_m2\)" "LAI_for_Feb_2003_\(m2_per_m2\)" "LAI_for_Mar_2003_\(m2_per_m2\)" "LAI_for_Apr_2003_\(m2_per_m2\)" "LAI_for_May_2003_\(m2_per_m2\)" "LAI_for_Jun_2003_\(m2_per_m2\)" "LAI_for_Jul_2003_\(m2_per_m2\)" "LAI_for_Aug_2003_\(m2_per_m2\)" "LAI_for_Sep_2003_\(m2_per_m2\)" "LAI_for_Oct_2003_\(m2_per_m2\)" "LAI_for_Nov_2003_\(m2_per_m2\)" "LAI_for_Dec_2003_\(m2_per_m2\)")
+NAMES=(" " "LAI_for_Jan_2003_(m2_per_m2)" "LAI_for_Feb_2003_(m2_per_m2)" "LAI_for_Mar_2003_(m2_per_m2)" "LAI_for_Apr_2003_(m2_per_m2)" "LAI_for_May_2003_(m2_per_m2)" "LAI_for_Jun_2003_(m2_per_m2)" "LAI_for_Jul_2003_(m2_per_m2)" "LAI_for_Aug_2003_(m2_per_m2)" "LAI_for_Sep_2003_(m2_per_m2)" "LAI_for_Oct_2003_(m2_per_m2)" "LAI_for_Nov_2003_(m2_per_m2)" "LAI_for_Dec_2003_(m2_per_m2)")
 for mm in $(seq --format="%02.0f" 1 12)
 do
-	m="$(printf "%d" ${mm})";
+	m=${mm#0} #"$(printf "%d" ${mm})";
 
 	file=laiv2003${mm}_30sec.nc
 	echo "$file, ${NAMES[$m]}"
