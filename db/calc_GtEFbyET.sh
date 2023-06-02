@@ -7,7 +7,7 @@ export LC_NUMERIC="en_US.UTF-8"
 #Inputs:
      EFfile="./orig/EFv210806.csv"           #Emission factor of each VegId
 SpecGTfiles=("./orig/SpeciationCrop210806.csv"  "./orig/SpeciationHerb210806.csv"  "./orig/SpeciationShrub210806.csv"  "./orig/SpeciationTree210725.csv")      #"Speciation" files for each GrowthType.
-         GT=("crop" "herb" "shrub" "tree") #GrowthType (same order than above!)
+         GT=("crop" "grass" "shrub" "tree") #GrowthType (same order than above!)
 	
     outFile='GtEFbyEcotype.csv'
 #============================================

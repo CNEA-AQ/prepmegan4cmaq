@@ -14,7 +14,7 @@ function interpolate(p,g,inp_file,varname)       result(img2)
  implicit none
  type(grid_type), intent(in)  :: g  !desired grid
  type(proj_type), intent(in)  :: p  !proj of desired grid
- character(*), intent(in)   :: inp_file,varname
+ character(*), intent(in)     :: inp_file,varname
  
  real,allocatable :: img2(:,:)      !output array
 
@@ -47,8 +47,8 @@ function interpolate(p,g,inp_file,varname)       result(img2)
    allocate(lon(GG%nx))
    !lat-----------------------------------------------------     
    call check( nf90_inq_varid(ncid,trim("lat"), varid    ))
-   call check( nf90_get_var(ncid, varid , lat(GG%ny:1:-1)))     !lat viene alreves
-   !call check( nf90_get_var(ncid, varid , lat            ))    
+   !call check( nf90_get_var(ncid, varid , lat(GG%ny:1:-1)))     !lat viene alreves
+   call check( nf90_get_var(ncid, varid , lat            ))    
    !lon-----------------------------------------------------     
    call check( nf90_inq_varid(ncid,trim("lon"), varid   ))
    call check( nf90_get_var(ncid, varid , lon           ))
@@ -78,11 +78,11 @@ function interpolate(p,g,inp_file,varname)       result(img2)
    allocate(img1(GC%nx, GC%ny)) 
    !levanto variable a interpolat (es lo que mas tarda)-----     
    call check( nf90_inq_varid(ncid,trim(varname), varid ))
-   call check( nf90_get_var(ncid, varid , img1(1:GC%nx,GC%ny:1:-1), start=[is,GG%ny-je],count=[GC%nx,GC%ny] ) ) !Acá tarda MUCHO..
-   !call check( nf90_get_var(ncid, varid , img1, start=[is,js],count=[GC%nx,GC%ny] ) )
+   !call check( nf90_get_var(ncid, varid , img1(1:GC%nx,GC%ny:1:-1), start=[is,GG%ny-je],count=[GC%nx,GC%ny] ) ) !Acá tarda MUCHO..!lat viene alreves
+   call check( nf90_get_var(ncid, varid , img1, start=[is,js],count=[GC%nx,GC%ny] ) )
    !--------------------------------------------------------     
  call check(nf90_close(ncid))
- print*,"File, minval, maxval",trim(inp_file),minval(img1),maxval(img1)
+ print*,"       File, minval, maxval",trim(inp_file),minval(img1),maxval(img1)
  
  !INTERPOLAR:
  ! Asumo que estoy trabajando con grillas regulares (dx/dy =cte.).    

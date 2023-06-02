@@ -39,32 +39,16 @@ Edit the namelist `example.inp` that contains the following variables:
 
 ```fortran
 &control
-start_date="2019-01-01" !"%Y-%m-%d %H"
-end_date="2019-01-01" !"%Y-%m-%d %H"
+griddesc_file='./GRIDDESC'
+     gridname='MERC_TEST'!'LCC_TAN_TEST',!
 
-griddesc_file='./GRIDDESC_example'
-gridname='Argentina'
-
-laiv_files='./input/laiv2003'            !LAIv=LAI/VegCover  (-) -  netCDFfiles path PREFIX
-
-crop_frac_file='./input/GF3aCrop.nc'     !frac of crop   cover (%) - netCDF file path
-grass_frac_file='./input/GF3aGrass.nc'   !frac of grass  cover (%) - netCDF file path
-shrub_frac_file='./input/GF3aShrub.nc'   !frac of shrubs cover (%) - netCDF file path
-tree_frac_file='./input/GF3aTree.nc'     !frac of trees  cover (%) - netCDF file path
-nl_tree_frac_file='./input/NTfrac_reorder_lat.nc',   !frac of needleleaf trees (%) - netCDF file path
-tp_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
-bl_tree_frac_file='./input/tropfrac_reorder_lat.nc', !frac of tropical   trees (%) - netCDF file path
-
-ecotype_file='./input/EVT3b.nc'          !Gridded ecotypes ids         - netCDF file_path
-GtEcoEF_file="./db/GtEFbyEcotype.csv"    !Emission factor of each GT grouped by Ecotype
-
-!BDSNP:
-arid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_arid.nc',       !     arid mask (0/1)- netCDF file path
-narid_file='./input/MEGAN31_Prep_Input_soil_191022/soil_climate_non_arid.nc',  ! non arid mask (0/1)- netCDF file path
-lt_file='./input/MEGAN31_Prep_Input_soil_191022/soil_landtype_',               ! landtype           - netCDF files PREFIX
-
-nitro_files='input/MEGAN31_Prep_Input_soil_191022/soil_nitrogen_mon'      ! soil-NO deposition of each month (kg/m2/s) - netCDF files PREFIX
-!fert_files='input/MEGAN31_Prep_Input_soil_191022/soil_fert_'             !Reservoir of N associated w/ manure and fertilizer (mg/m3) - netCDF files PREFIX
+ecotypes_file='veg_Ecotypes.nc',
+growtype_file='veg_GrowthFormFracions.nc',
+    laiv_file='veg_LAIv.nc',
+ climate_file='soil_climate.nc',
+   ferti_file='soil_fert.nc',
+landtype_file='soil_landtype.nc',
+   nitro_file='soil_nitro.nc',
 /
 ```
 
@@ -81,16 +65,16 @@ Please feel free to contact the developer if you have any issues or suggestions.
 
 ## Planned future improvements:
 
- + [ ] BDNP (Fert variable) support.
- + [ ] Reduce number input files and output files. 
-   - [ ] Group LAI files into one.
-   - [ ] Group GT frac files into one.
-   - [ ] Group Fert files and Nitro files.
-   - [ ] Group landtype files by using int as id. 
- + [ ] Input and output files and variables with minningfull names.
+ + [x] Reduce number input files and output files. 
+   - [x] Group LAI files into one.
+   - [x] Group GT frac files into one.
+   - [x] Group Fert files and Nitro files.
+   - [x] Group landtype files by using int as id. 
+ + [x] Input and output files and variables with minningfull names.
  + [ ] Remove GDAL/OGR dependence 
    - [x] Roboust GRIDDESC reader.
    - [x] coordinate transformations functions
-   - [ ] interpolation subroutines
+   - [ ] interpolation subroutines (bilinear, bicubic, average, mode, median)
+ + [ ] BDNP (Fert variable) support.
  + [ ] Add some scripts to download and prepare some input files (LAI, Fert, Nitro, etc.)
 

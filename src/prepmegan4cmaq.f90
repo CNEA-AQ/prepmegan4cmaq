@@ -21,10 +21,9 @@ program prepmegan4cmaq
   integer :: i,j,k
 
   character(len=17) :: start_date,end_date
-  character(200)    :: griddesc_file,gridname
-  character(200)    :: crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file,bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
-
-  namelist/control/start_date,end_date,griddesc_file,gridname,crop_frac_file,grass_frac_file,shrub_frac_file,tree_frac_file,nl_tree_frac_file, bl_tree_frac_file,tp_tree_frac_file,ecotype_file,laiv_files,GtEcoEF_file,arid_file, narid_file, lt_file,nitro_files
+  character(200)    :: griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,ferti_file,landtype_file,nitro_file,GtEcoEF_file
+  
+  namelist/control/griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,ferti_file,landtype_file,nitro_file,GtEcoEF_file
 
   !Leo namelist:
   read(*,nml=control, iostat=iostat)
@@ -37,19 +36,18 @@ program prepmegan4cmaq
   call read_GRIDDESC(griddesc_file,gridname, proj, grid)
                                                                        
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
-  call build_CT3(grid,proj,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file,nl_tree_frac_file,tp_tree_frac_file)
+  call build_CT3(grid,proj,growtype_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  !call build_LAIv(grid,proj,laiv_files)
+  call build_LAIv(grid,proj,laiv_file)
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
-  call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotype_file,crop_frac_file,tree_frac_file,grass_frac_file,shrub_frac_file)
+  call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
   
-  !BDSNP:
-  !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
-  !call BDSNP_LAND(grid,proj,arid_file,narid_file,lt_file)
+  !BDSNP:  !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
+  call BDSNP_LAND(grid,proj,climate_file,landtype_file)
 
-  !call BDSNP_NFILE(grid,proj,nitro_files)   !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
+  call BDSNP_NFILE(grid,proj,nitro_file)    !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
   !call BDSNP_FFILE()                       !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
 
 print*, "========================================="
@@ -61,11 +59,11 @@ contains
  !----------------------------------
  !  MEGAN_CTS 
  !---------------------------------
- subroutine build_CT3(g,p,cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile)
+ subroutine build_CT3(g,p,gwt_file)  !cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile)
     implicit none
     type(grid_type) ,intent(in) :: g
     type(proj_type) ,intent(in) :: p
-    character(len=200) :: cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile
+    character(len=200) :: gwt_file   !cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile
     real, allocatable :: CTS(:,:,:,:)!,CTS(:,:,:)
     character(len=10) :: outfile
     character(len=16),allocatable :: var_list(:),var_unit(:)
@@ -84,23 +82,26 @@ contains
     allocate(var_desc(nvars))  
     allocate(CTS(g%nx,g%ny,1,nvars+1))  ! allocate(CTS(g%nx,g%ny,nvars))  
   
-    CTS(:,:,1,1)=interpolate(p,g,inp_file=treefile,    varname="m20tree"  ) !"./input/GF3aTree.nc"            ,
-    CTS(:,:,1,2)=interpolate(p,g,inp_file=shrubfile,   varname="m204shrub") !"./input/GF3aShrub.nc"           ,
-    CTS(:,:,1,3)=interpolate(p,g,inp_file=cropfile,    varname="m20crop"  ) !"./input/GF3aCrop.nc"            ,
-    CTS(:,:,1,4)=interpolate(p,g,inp_file=grassfile,   varname="m202grass") !"./input/GF3aGrass.nc"           ,
-    CTS(:,:,1,5)=interpolate(p,g,inp_file=nltreefile,  varname="NTfrac"   ) !"./input/NTfrac_reorder_lat.nc"  ,
-    CTS(:,:,1,6)=interpolate(p,g,inp_file=troptreefile,varname="tropfrac" ) !"./input/tropfrac_reorder_lat.nc",
+    CTS(:,:,1,1)=interpolate(p,g,inp_file=gwt_file, varname="tree"     ) !"./input/GF3aTree.nc"            ,
+    CTS(:,:,1,2)=interpolate(p,g,inp_file=gwt_file, varname="shrub"    ) !"./input/GF3aShrub.nc"           ,
+    CTS(:,:,1,3)=interpolate(p,g,inp_file=gwt_file, varname="crop"     ) !"./input/GF3aCrop.nc"            ,
+    CTS(:,:,1,4)=interpolate(p,g,inp_file=gwt_file, varname="grass"    ) !"./input/GF3aGrass.nc"           ,
+    CTS(:,:,1,5)=interpolate(p,g,inp_file=gwt_file, varname="nl_tree"  ) !"./input/NTfrac_reorder_lat.nc"  ,
+    CTS(:,:,1,6)=interpolate(p,g,inp_file=gwt_file, varname="trop_tree") !"./input/tropfrac_reorder_lat.nc",
+
     where ( CTS < 0 .or. CTS > 100 )
          CTS=0
     end where
-    !tropical tree
-    CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6) 
     !needleleaf tree
-    CTS(:,:,1,5)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * CTS(:,:,1,5)    
+    CTS(:,:,1,5)=CTS(:,:,1,1) * CTS(:,:,1,5)/100 * (1-CTS(:,:,1,6)/100) 
+
+    !tropical tree
+    CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6)/100
+
     !boradleaf tree
-    CTS(:,:,1,7)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)) * (1.0-CTS(:,:,1,5))
+    CTS(:,:,1,7)=CTS(:,:,1,1) * (1-CTS(:,:,1,6)/100) * (1-CTS(:,:,1,5)/100)
     
-    var_list=(/ 'SHRUB      ','CROP       ','HERB       ','NEEDL      ','TROPI      ','BROAD      '/)
+    var_list=(/ 'SHRUB      ','CROP       ','GRASS      ','NEEDL      ','TROPI      ','BROAD      '/)
     var_desc=(/ "shrub fraction         ","crop fraction          ","grass fraction         ", "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction" /) 
     var_unit=spread("nondimension",1,nvars)
  
@@ -127,11 +128,11 @@ contains
  !----------------------------------
  !  MEGAN_LAI 
  !---------------------------------
- subroutine build_LAIv(g,p,laivfile)
+ subroutine build_LAIv(g,p,laiv_file)
     implicit none
     type(grid_type) ,intent(in) :: g
     type(proj_type) ,intent(in) :: p
-    character(len=200) :: laivfile
+    character(len=200) :: laiv_file
     real, allocatable :: LAIv(:,:,:)
     character(len=16),allocatable :: var_list(:),var_unit(:)
     character(len=25),allocatable :: var_desc(:)
@@ -153,8 +154,8 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        print*,trim(laivfile)//kk//".nc"
-        LAIv(:,:,k)=interpolate(p,g,inp_file="laiv2003"//kk//"_30sec.nc",varname="laiv") 
+        print*,trim(laiv_file)//kk//".nc"
+        LAIv(:,:,k)=interpolate(p,g,inp_file=laiv_file,varname="laiv"//kk) 
     enddo
     where (LAIv < 0.0 )
             LAIv=0.0
@@ -184,11 +185,11 @@ contains
   !----------------------------------
   !  MEGAN_LDF & MEGAN_EF
   !---------------------------------
-   subroutine build_EFS_LDF(g,p,GtEcoEF_file,ecotypefile,cropfile,treefile,grassfile,shrubfile)
+   subroutine build_EFS_LDF(g,p,GtEcoEF_file,ecotypefile,gwt_file) !cropfile,treefile,grassfile,shrubfile)
       implicit none
       type(grid_type) ,intent(in) :: g
       type(proj_type) ,intent(in) :: p
-      character(len=50),intent(in) :: ecotypefile,cropfile,treefile,grassfile,shrubfile,GtEcoEF_file
+      character(len=50),intent(in) :: ecotypefile,GtEcoEF_file, gwt_file !cropfile,treefile,grassfile,shrubfile
       character(len=10) :: outfileEF,outfileLDF
       integer i,j,k
       integer :: var_id,ncid
@@ -214,18 +215,18 @@ contains
       allocate( ECOTYPE(g%nx, g%ny   ))   !ecotype         
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
 
-      ECOTYPE(:,:)=interpolate(p,g, trim(ecotypefile), varname="ecotype")
+      ECOTYPE(:,:)=FLOOR(interpolate(p,g,ecotypefile,varname="ecotype"))  !Acá tengo que USAR LA MODA para interpolar!
 
-      GTYP_LIST=(/'crop ','tree ','herb ','shrub'/)
-      GTYP(:,:,1)=interpolate(p,g, cropfile,varname="m20crop"  )
-      GTYP(:,:,2)=interpolate(p,g, treefile,varname="m20tree"  )
-      GTYP(:,:,3)=interpolate(p,g,grassfile,varname="m202grass" )
-      GTYP(:,:,4)=interpolate(p,g,shrubfile,varname="m204shrub")
+      GTYP_LIST=(/'crop ','tree ','grass','shrub'/)
+      GTYP(:,:,1)=interpolate(p,g,gwt_file,varname="crop" )
+      GTYP(:,:,2)=interpolate(p,g,gwt_file,varname="tree" )
+      GTYP(:,:,3)=interpolate(p,g,gwt_file,varname="grass")
+      GTYP(:,:,4)=interpolate(p,g,gwt_file,varname="shrub")
       
-      where (GTYP < 0.0 )
+      where ( GTYP < 0.0 )
               GTYP=0.0
       endwhere
-      GTYP=GTYP/100  !las frac están en porcentaje.
+      GTYP=GTYP/100  ! % -> (0-1) . xq las frac están en porcentaje.
 
      !Arranco con una tabla: GtEcoEF_file:
      !growtypeId   ecotypeID   var1,   var2, ... ,  var19,  var20, ... ,  var23
@@ -287,11 +288,11 @@ contains
  !----------------------------------
  !  BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE
  !---------------------------------
- subroutine BDSNP_LAND(g,p,arid_file, narid_file,lt_file)
+ subroutine BDSNP_LAND(g,p,climate_file,lt_file)
      implicit none
      type(grid_type) ,intent(in) :: g
      type(proj_type) ,intent(in) :: p
-     character(len=200),intent(in) :: arid_file,narid_file,lt_file
+     character(len=200),intent(in) :: climate_file,lt_file
      real, allocatable :: LANDGRID(:,:,:)
      character(len=16),allocatable :: var_list(:),var_unit(:)
      character(len=25),allocatable :: var_desc(:)
@@ -309,14 +310,15 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
-     LANDGRID(:,:,1) = interpolate(p,g,  arid_file, varname="arid")
-     LANDGRID(:,:,2) = interpolate(p,g, narid_file, varname="non_arid")
+     LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid")
+     LANDGRID(:,:,2) = interpolate(p,g,climate_file, varname="non_arid")
+     LANDGRID(:,:,3) = interpolate(p,g,     lt_file, varname="landtype")
      
-     LANDGRID(:,:,3) =0.0 
-     do lt=1,24
-             write(landtypeId, '(I0.2)') lt
-             LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc",varname="LANDFRAC")) !DO AN INTEGER VERSION OF THIS
-     enddo
+     !LANDGRID(:,:,3) =0.0 
+     !do lt=1,24
+     !        write(landtypeId, '(I0.2)') lt
+     !        LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc",varname="LANDFRAC")) !DO AN INTEGER VERSION OF THIS
+     !enddo
 
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
      var_unit=spread('1 or 0      ',1,nvars) 
@@ -334,11 +336,11 @@ contains
      call check(nf90_close( ncid ))
  end subroutine BDSNP_LAND
 
- subroutine BDSNP_NFILE(g,p,nitro_files)   
+ subroutine BDSNP_NFILE(g,p,nitro_file)   
     implicit none
     type(grid_type) ,intent(in) :: g
     type(proj_type) ,intent(in) :: p
-    character(len=200),intent(in) :: nitro_files
+    character(len=200),intent(in) :: nitro_file
     real, allocatable :: NITRO(:,:,:)
     character(len=10) :: outfile
     character(len=16),allocatable :: var_list(:),var_unit(:)
@@ -360,7 +362,8 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="nitrogen")
+        !NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="nitrogen")
+        NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk)
     enddo
     where (NITRO < 0.0 )
             NITRO=0.0
