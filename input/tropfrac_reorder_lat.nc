@@ -1,1 +1,0 @@
-/home/usuario/data/megan_cmaq_uci_bai_inp_data/tropfrac_reorder_lat.nc
