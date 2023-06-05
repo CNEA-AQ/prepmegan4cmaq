@@ -82,24 +82,31 @@ contains
     allocate(var_desc(nvars))  
     allocate(CTS(g%nx,g%ny,1,nvars+1))  ! allocate(CTS(g%nx,g%ny,nvars))  
   
-    CTS(:,:,1,1)=interpolate(p,g,inp_file=gwt_file, varname="tree"     ) !"./input/GF3aTree.nc"            ,
-    CTS(:,:,1,2)=interpolate(p,g,inp_file=gwt_file, varname="shrub"    ) !"./input/GF3aShrub.nc"           ,
-    CTS(:,:,1,3)=interpolate(p,g,inp_file=gwt_file, varname="crop"     ) !"./input/GF3aCrop.nc"            ,
-    CTS(:,:,1,4)=interpolate(p,g,inp_file=gwt_file, varname="grass"    ) !"./input/GF3aGrass.nc"           ,
-    CTS(:,:,1,5)=interpolate(p,g,inp_file=gwt_file, varname="nl_tree"  ) !"./input/NTfrac_reorder_lat.nc"  ,
-    CTS(:,:,1,6)=interpolate(p,g,inp_file=gwt_file, varname="trop_tree") !"./input/tropfrac_reorder_lat.nc",
+    CTS(:,:,1,1)=interpolate(p,g,inp_file=gwt_file, varname="tree"     , method="bilinear")
+    CTS(:,:,1,2)=interpolate(p,g,inp_file=gwt_file, varname="shrub"    , method="bilinear")
+    CTS(:,:,1,3)=interpolate(p,g,inp_file=gwt_file, varname="crop"     , method="bilinear")
+    CTS(:,:,1,4)=interpolate(p,g,inp_file=gwt_file, varname="grass"    , method="bilinear")
+    CTS(:,:,1,5)=interpolate(p,g,inp_file=gwt_file, varname="nl_tree"  , method="bilinear")
+    CTS(:,:,1,6)=interpolate(p,g,inp_file=gwt_file, varname="trop_tree", method="bilinear")
 
-    where ( CTS < 0 .or. CTS > 100 )
+    where ( CTS < 0 .or. CTS > 110 )
          CTS=0
     end where
-    !needleleaf tree
-    CTS(:,:,1,5)=CTS(:,:,1,1) * CTS(:,:,1,5)/100 * (1-CTS(:,:,1,6)/100) 
 
-    !tropical tree
-    CTS(:,:,1,6)=CTS(:,:,1,1) * CTS(:,:,1,6)/100
+    !where ( CTS(:,:,1,6) == 100)
+    !    CTS(:,:,1,6)=CTS(:,:,1,1)
+    !elsewhere
+    !    CTS(:,:,1,5)=CTS(:,:,1,1) * (    CTS(:,:,1,5)/100.0)
+    !    CTS(:,:,1,7)=100.0 - CTS(:,:,1,5)
+    !endwhere
+    !needleleaf tree
+    CTS(:,:,1,5)=(    CTS(:,:,1,5)/100.0) * CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)/100.0) 
 
     !boradleaf tree
-    CTS(:,:,1,7)=CTS(:,:,1,1) * (1-CTS(:,:,1,6)/100) * (1-CTS(:,:,1,5)/100)
+    CTS(:,:,1,7)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)/100.0) * (1.0-CTS(:,:,1,5)/100.0)
+
+    !tropical tree
+    CTS(:,:,1,6)=CTS(:,:,1,1) * (    CTS(:,:,1,6)/100.0)
     
     var_list=(/ 'SHRUB      ','CROP       ','GRASS      ','NEEDL      ','TROPI      ','BROAD      '/)
     var_desc=(/ "shrub fraction         ","crop fraction          ","grass fraction         ", "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction" /) 
@@ -155,7 +162,7 @@ contains
     do k=1,nvars
         write(kk,'(I0.2)') k
         print*,trim(laiv_file)//kk//".nc"
-        LAIv(:,:,k)=interpolate(p,g,inp_file=laiv_file,varname="laiv"//kk) 
+        LAIv(:,:,k)=interpolate(p,g,inp_file=laiv_file,varname="laiv"//kk, method="bilinear") 
     enddo
     where (LAIv < 0.0 )
             LAIv=0.0
@@ -215,13 +222,13 @@ contains
       allocate( ECOTYPE(g%nx, g%ny   ))   !ecotype         
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
 
-      ECOTYPE(:,:)=FLOOR(interpolate(p,g,ecotypefile,varname="ecotype"))  !Acá tengo que USAR LA MODA para interpolar!
+      ECOTYPE(:,:)=FLOOR(interpolate(p,g,ecotypefile,varname="ecotype", method="mode"))  !Acá tengo que USAR LA MODA para interpolar!
 
       GTYP_LIST=(/'crop ','tree ','grass','shrub'/)
-      GTYP(:,:,1)=interpolate(p,g,gwt_file,varname="crop" )
-      GTYP(:,:,2)=interpolate(p,g,gwt_file,varname="tree" )
-      GTYP(:,:,3)=interpolate(p,g,gwt_file,varname="grass")
-      GTYP(:,:,4)=interpolate(p,g,gwt_file,varname="shrub")
+      GTYP(:,:,1)=interpolate(p,g,gwt_file,varname="crop" , method="bilinear")
+      GTYP(:,:,2)=interpolate(p,g,gwt_file,varname="tree" , method="bilinear")
+      GTYP(:,:,3)=interpolate(p,g,gwt_file,varname="grass", method="bilinear")
+      GTYP(:,:,4)=interpolate(p,g,gwt_file,varname="shrub", method="bilinear")
       
       where ( GTYP < 0.0 )
               GTYP=0.0
@@ -310,9 +317,9 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
-     LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid")
-     LANDGRID(:,:,2) = interpolate(p,g,climate_file, varname="non_arid")
-     LANDGRID(:,:,3) = interpolate(p,g,     lt_file, varname="landtype")
+     LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid", method="mode")
+     LANDGRID(:,:,2) = interpolate(p,g,climate_file, varname="non_arid", method="mode")
+     LANDGRID(:,:,3) = interpolate(p,g,     lt_file, varname="landtype", method="mode")
      
      !LANDGRID(:,:,3) =0.0 
      !do lt=1,24
@@ -363,7 +370,7 @@ contains
     do k=1,nvars
         write(kk,'(I0.2)') k
         !NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="nitrogen")
-        NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk)
+        NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk, method="bilinear")
     enddo
     where (NITRO < 0.0 )
             NITRO=0.0

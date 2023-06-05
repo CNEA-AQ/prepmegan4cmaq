@@ -59,7 +59,7 @@ ncatted -h -O -a Source_Software,global,d,c,"" veg_Ecotypes.nc
 #Growtht Form:
 #NTfrac esta invertido en la direccion-y (respecto de los demas) y es tipo "float", asi que lo convierto para que me quede como el resto.
 ncpdq -4 -O -a -lat NTfrac_reorder_lat.nc NTfrac.nc
-ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=-128; where(NTfrac > 999) NTfrac=-128; where(NTfrac>0) NTfrac=NTfrac*100; NTfrac = byte(NTfrac)" NTfrac.nc tmp.nc
+ncap2 -4 -O -s "where(NTfrac < 0) NTfrac=0; where(NTfrac > 999) NTfrac=0; where(NTfrac>0) NTfrac=NTfrac*100; NTfrac = byte(NTfrac)" NTfrac.nc tmp.nc
 ncap2 -4 -O -s "NTfrac = byte(NTfrac)" tmp.nc NTfrac.nc
 
 ncks -h -O -v "lat"       GF3aCrop.nc  tmp.nc
@@ -71,8 +71,7 @@ ncks -h -A -v "m20tree"   GF3aTree.nc  tmp.nc
 ncks -h -A -v "NTfrac"    NTfrac.nc    tmp.nc
 #ncks -h -A -v "tropfrac"  tropfrac.nc  tmp.nc
 ncks -h -A -v "tropfrac"  tropfrac_reorder_lat.nc  tmp.nc
-
-ncap2 -s 'tropfrac = 100*tropfrac' -O tmp.nc tmp.nc		#tropfrac [0/1] -> (0,100)
+ncap2 -s 'where(tropfrac < 0) tropfrac=0; tropfrac = byte(100*tropfrac)' -O tmp.nc tmp.nc		#tropfrac [0/1] -> (0,100)
 #Ajuste de metadata:
 ncatted -h -O -a long_name,m20crop,d,c,"crop cover fraction" tmp.nc
 ncatted -h -O -a long_name,m202grass,d,c,"grass cover fraction" tmp.nc
@@ -98,14 +97,14 @@ ncatted -h -O -a NCO,global,d,c,"" tmp.nc
 ncatted -h -O -a history_of_appended_files,global,d,c,"" tmp.nc
 ncatted -h -O -a history,global,o,c,"" tmp.nc
 
-ncpdq -h -a -lat tmp.nc GrowthFormFracions.nc	#ordenar lat dimension (en orden creciente)
+ncpdq -h -a -lat tmp.nc veg_GrowthFormFracions.nc	#ordenar lat dimension (en orden creciente)
 
-ncrename -h -O -v m20crop,crop    GrowthFormFracions.nc
-ncrename -h -O -v m202grass,grass GrowthFormFracions.nc
-ncrename -h -O -v m204shrub,shrub GrowthFormFracions.nc
-ncrename -h -O -v m20tree,tree    GrowthFormFracions.nc
-ncrename -h -O -v NTfrac,nl_tree  GrowthFormFracions.nc
-ncrename -h -O -v tropfrac,trop_tree GrowthFormFracions.nc
+ncrename -h -O -v m20crop,crop    veg_GrowthFormFracions.nc
+ncrename -h -O -v m202grass,grass veg_GrowthFormFracions.nc
+ncrename -h -O -v m204shrub,shrub veg_GrowthFormFracions.nc
+ncrename -h -O -v m20tree,tree    veg_GrowthFormFracions.nc
+ncrename -h -O -v NTfrac,nl_tree  veg_GrowthFormFracions.nc
+ncrename -h -O -v tropfrac,trop_tree veg_GrowthFormFracions.nc
 
 rm tmp.nc #limpio.
 #----------------------------

@@ -1,6 +1,6 @@
 &control
 griddesc_file='./GRIDDESC'
-     gridname='MERC_TEST'!'LCC_TAN_TEST',!
+     gridname='LCC_SEC_TEST', !'MERC_TEST'!'LCC_TAN_TEST',!
 
 ecotypes_file='./input/veg_Ecotypes.nc',
 growtype_file='./input/veg_GrowthFormFracions.nc',
