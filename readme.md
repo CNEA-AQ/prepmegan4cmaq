@@ -8,7 +8,7 @@
 
 ## Get MEGAN input data:
 
-All the data required to run this pre-processor is freely available from [UCI BAI webpage](https://bai.ess.uci.edu/megan/data-and-code/) and has been produced by the team of Alex Guenther.
+All the data required to run this pre-processor is freely available from [MEGAN GLOBAL DATA](https://drive.google.com/drive/folders/1ZdohMA4f4O_Yd2HttMLjhGpgFbTQMlt0?usp=sharing). <!-- [UCI BAI webpage](https://bai.ess.uci.edu/megan/data-and-code/) and has been produced by the team of Alex Guenther.-->
 
 Data required:
 + Leaf Area Index / Vegetation Cover Fraction (LAIv).
