@@ -52,14 +52,14 @@ NR == FNR {
    #VegId, EF1,EF2,....,LDF1,...,LDF4
    #$1     $2, $3,......,...,...,$(n)
    n=NF
-   for (i = 2; i < n; i++){
+   for (i = 2; i <= n; i++){
         EF[$1,i-1] = $i
    };next
 } 
 NR != FNR {
    # gtype,ecotype,vegid,vegfrac
    #$1     $2      $3     $4
-   for (i = 2; i < n; i++) {
+   for (i = 2; i <= n; i++) {
        EFe[$1,$2,i-1] += $4 * EF[$3,i-1]
    }
 } 

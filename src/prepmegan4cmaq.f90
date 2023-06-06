@@ -5,12 +5,11 @@
 program prepmegan4cmaq
 
   use netcdf
-
   use utils_mod         !utils
-  use proj_mod          !subroutines for coordinate transformations
-  use nc_handler_mod    !functions to deal with netcdf
-  use interpolate_mod   !subroutines for interpolation/regridding
-  use readGRIDDESC_mod
+  use proj_mod          !coordinate transformation functions
+  use nc_handler_mod    !functions to deal with netcdf files
+  use interpolate_mod   !function for interpolation/regridding
+  use readGRIDDESC_mod  !GRIDDESC reader
 
   implicit none
 
@@ -37,9 +36,9 @@ program prepmegan4cmaq
                                                                        
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
   call build_CT3(grid,proj,growtype_file)
-  
-  !`MEGAN_LAI` (Leaf Area Index).
-  call build_LAIv(grid,proj,laiv_file)
+  !
+  !!`MEGAN_LAI` (Leaf Area Index).
+  !call build_LAIv(grid,proj,laiv_file) 
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
   call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
@@ -59,17 +58,16 @@ contains
  !----------------------------------
  !  MEGAN_CTS 
  !---------------------------------
- subroutine build_CT3(g,p,gwt_file)  !cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile)
+ subroutine build_CT3(g,p,gwt_file) 
     implicit none
     type(grid_type) ,intent(in) :: g
     type(proj_type) ,intent(in) :: p
-    character(len=200) :: gwt_file   !cropfile,treefile,grassfile,shrubfile,nltreefile,troptreefile
-    real, allocatable :: CTS(:,:,:,:)!,CTS(:,:,:)
+    character(len=200) :: gwt_file 
+    real, allocatable :: CTS(:,:,:,:)
     character(len=10) :: outfile
     character(len=16),allocatable :: var_list(:),var_unit(:)
     character(len=25),allocatable :: var_desc(:)
     integer :: nvars
-    !integer :: var_id,ncid
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
  
     print*,"Building MEGAN_CTS file ..."
@@ -89,22 +87,14 @@ contains
     CTS(:,:,1,5)=interpolate(p,g,inp_file=gwt_file, varname="nl_tree"  , method="bilinear")
     CTS(:,:,1,6)=interpolate(p,g,inp_file=gwt_file, varname="trop_tree", method="bilinear")
 
-    where ( CTS < 0 .or. CTS > 110 )
-         CTS=0
-    end where
-
-    !where ( CTS(:,:,1,6) == 100)
-    !    CTS(:,:,1,6)=CTS(:,:,1,1)
-    !elsewhere
-    !    CTS(:,:,1,5)=CTS(:,:,1,1) * (    CTS(:,:,1,5)/100.0)
-    !    CTS(:,:,1,7)=100.0 - CTS(:,:,1,5)
-    !endwhere
+    !where ( CTS < 0 .or. CTS > 100 )
+    !     CTS=0
+    !end where
+    
     !needleleaf tree
     CTS(:,:,1,5)=(    CTS(:,:,1,5)/100.0) * CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)/100.0) 
-
     !boradleaf tree
     CTS(:,:,1,7)=CTS(:,:,1,1) * (1.0-CTS(:,:,1,6)/100.0) * (1.0-CTS(:,:,1,5)/100.0)
-
     !tropical tree
     CTS(:,:,1,6)=CTS(:,:,1,1) * (    CTS(:,:,1,6)/100.0)
     
@@ -222,7 +212,7 @@ contains
       allocate( ECOTYPE(g%nx, g%ny   ))   !ecotype         
       allocate(    GTYP(g%nx, g%ny,4 ))   !growthtype fracs
 
-      ECOTYPE(:,:)=FLOOR(interpolate(p,g,ecotypefile,varname="ecotype", method="mode"))  !Acá tengo que USAR LA MODA para interpolar!
+      ECOTYPE(:,:)=FLOOR(interpolate(p,g,ecotypefile,varname="ecotype", method="mode")) 
 
       GTYP_LIST=(/'crop ','tree ','grass','shrub'/)
       GTYP(:,:,1)=interpolate(p,g,gwt_file,varname="crop" , method="bilinear")
@@ -291,7 +281,6 @@ contains
      deallocate(OUTGRID)
  end subroutine
 
-
  !----------------------------------
  !  BDSNP_ARID, BDSNP_NONARID & BDSNP_LANDTYPE
  !---------------------------------
@@ -317,16 +306,10 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
-     LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid", method="mode")
+     LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid"    , method="mode")
      LANDGRID(:,:,2) = interpolate(p,g,climate_file, varname="non_arid", method="mode")
      LANDGRID(:,:,3) = interpolate(p,g,     lt_file, varname="landtype", method="mode")
      
-     !LANDGRID(:,:,3) =0.0 
-     !do lt=1,24
-     !        write(landtypeId, '(I0.2)') lt
-     !        LANDGRID(:,:,3) = LANDGRID(:,:,3)+lt*FLOOR(0.5+interpolate(p,g, trim(lt_file)//landtypeId//".nc",varname="LANDFRAC")) !DO AN INTEGER VERSION OF THIS
-     !enddo
-
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
      var_unit=spread('1 or 0      ',1,nvars) 
      var_desc=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
@@ -369,7 +352,6 @@ contains
     !Levanto netcdf input files
     do k=1,nvars
         write(kk,'(I0.2)') k
-        !NITRO(:,:,k)  = interpolate(p,g,trim(nitro_files)//kk//".nc", varname="nitrogen")
         NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk, method="bilinear")
     enddo
     where (NITRO < 0.0 )
