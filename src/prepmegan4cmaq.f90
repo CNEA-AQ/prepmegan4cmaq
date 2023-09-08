@@ -164,7 +164,7 @@ contains
               call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
               call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
               call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
-              call check(nf90_put_att(ncid, nf90_global,"NVARS"  , nvars                ))
+              call check(nf90_put_att(ncid, nf90_global,"NVARS"  , 1                    ))!son 6, pero en la version vieja son una variable apiladas en la dimension temporal
               call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
               call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
               call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
