@@ -37,8 +37,8 @@ program prepmegan4cmaq
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
   call build_CT3(grid,proj,growtype_file)
   
-  !!`MEGAN_LAI` (Leaf Area Index).
-  !call build_LAIv(grid,proj,laiv_file) 
+  !`MEGAN_LAI` (Leaf Area Index).
+  call build_LAIv(grid,proj,laiv_file) 
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
   call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
@@ -95,7 +95,7 @@ contains
     !tropical tree
     CTS(:,:,1,2)=CTS(:,:,1,7) * (    CTS(:,:,1,2)/100.0)
     
-    !!Version prolija:
+    !!"Improved" version:
     !allocate(var_list(nvars))  
     !allocate(var_unit(nvars))  
     !allocate(var_desc(nvars))  
@@ -122,12 +122,6 @@ contains
 
 !**********************************************************!
           !MEGAN OLDER VERSION:
-          allocate(var_list(1))  
-          allocate(var_unit(1))  
-          allocate(var_desc(1))  
-          var_list=['CTS']
-          var_desc=[''] 
-          var_unit=['nondimension']
           ! Create the NetCDF file
           !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
           call check(nf90_create(outFile, NF90_CLOBBER, ncid))
@@ -150,7 +144,7 @@ contains
               call check(nf90_put_att(ncid, var_id,"var_desc" , "" ))
           
               ! Defino attributos
-              call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: \$Id: init3" ))
+              call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: $Id: init3" ))
               call check(nf90_put_att(ncid, nf90_global,"EXEC_ID", "????????????????"   ))
               call check(nf90_put_att(ncid, nf90_global,"FTYPE"  , 1                    ))
               call check(nf90_put_att(ncid, nf90_global,"SDATE"  , 0000000              ))!stat_date (int)
@@ -164,7 +158,7 @@ contains
               call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
               call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
               call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
-              call check(nf90_put_att(ncid, nf90_global,"NVARS"  , 1                    ))!son 6, pero en la version vieja son una variable apiladas en la dimension temporal
+              call check(nf90_put_att(ncid, nf90_global,"NVARS"  , 1                    ))!son 6, pero apiladas en la dimension temporal
               call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
               call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
               call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
@@ -180,7 +174,8 @@ contains
               call check(nf90_put_att(ncid, nf90_global,"VGLVLS" , [0., 0.]             ))!no sé que es.
               call check(nf90_put_att(ncid, nf90_global,"GDNAM"  , g%gName              ))
               call check(nf90_put_att(ncid, nf90_global,"UPNAM"  , "prepMegan4cmaq.exe" ))!no sé que es.
-              call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, 16, "CTS"))
+              !call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, 16, "CTS"))
+              call check(nf90_put_att(ncid, nf90_global,"VAR-LIST","CTS"))
               call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
               call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
           call check(nf90_enddef(ncid))
