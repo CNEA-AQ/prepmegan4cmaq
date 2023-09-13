@@ -19,10 +19,11 @@ program prepmegan4cmaq
   integer :: status,iostat
   integer :: i,j,k
 
-  character(len=17) :: start_date,end_date
+  !character(len=17) :: start_date,end_date
   character(200)    :: griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,ferti_file,landtype_file,nitro_file,GtEcoEF_file
-  
-  namelist/control/griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,ferti_file,landtype_file,nitro_file,GtEcoEF_file
+  logical           :: run_CTS=.true. ,run_LAI=.true. , run_EFS=.true. , run_BDSNP=.true.
+  character(5)      :: out_fmt='CMAQ'
+  namelist/control/griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,ferti_file,landtype_file,nitro_file,GtEcoEF_file,run_CTS,run_LAI,run_EFS,run_BDSNP,out_fmt
 
   !Leo namelist:
   read(*,nml=control, iostat=iostat)
@@ -35,19 +36,26 @@ program prepmegan4cmaq
   call read_GRIDDESC(griddesc_file,gridname, proj, grid)
                                                                        
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
-  call build_CT3(grid,proj,growtype_file)
+  if (run_CTS) then 
+     call build_CT3(grid,proj,growtype_file)
+  endif
   
   !`MEGAN_LAI` (Leaf Area Index).
-  call build_LAIv(grid,proj,laiv_file) 
+  if (run_LAI) then
+     call build_LAIv(grid,proj,laiv_file)
+  endif
 
   !`MEGAN_EFS` (emission factors) & `MEGAN_LDF` (*Light Dependence Fractions*) 
-  call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
+  if (run_EFS ) then
+     call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
+  endif
   
   !BDSNP:  !call BDSNP_AFILE()   !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()   !int Land types (1:24)
-  call BDSNP_LAND(grid,proj,climate_file,landtype_file)
-
-  call BDSNP_NFILE(grid,proj,nitro_file)    !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
-  !call BDSNP_FFILE(grid,proj,fert_file)    !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
+  if (run_BDSNP) then
+     call BDSNP_LAND(grid,proj,climate_file,landtype_file)
+     call BDSNP_NFILE(grid,proj,nitro_file)                !float nitrogeno01, nitrogeno02,...,nitrogeno12  monthly nitrogen deposition in ng of N /m2/s
+    !call BDSNP_FFILE(grid,proj,fert_file)                 !float fert01,fert02,...,fert  daily fertilizer aplication. unit: ng of N/m2 
+  endif
 
 print*, "========================================="
 print*, " prepmegan4cmaq: Completed successfully"
@@ -72,7 +80,6 @@ contains
  
     print*,"Building MEGAN_CTS file ..."
 
-    outfile='CT3.nc'
     nvars=6
     
     allocate(CTS(g%nx,g%ny,1,nvars+1))  ! allocate(CTS(g%nx,g%ny,nvars))  
@@ -95,102 +102,116 @@ contains
     !tropical tree
     CTS(:,:,1,2)=CTS(:,:,1,7) * (    CTS(:,:,1,2)/100.0)
     
-    !!"Improved" version:
-    !allocate(var_list(nvars))  
-    !allocate(var_unit(nvars))  
-    !allocate(var_desc(nvars))  
-    !var_list=(/ 'NEEDL      ','TROPI      ','BROAD      ','SHRUB      ','GRASS      ','CROP       '/)
-    !var_desc=(/  "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","grass fraction         ","crop fraction          "/) 
-    !var_unit=spread("nondimension",1,nvars)
+    if ( trim(out_fmt) == 'csv' .or. trim(out_fmt) == 'CSV' ) then
+
+        outfile='CT3.csv'
+        OPEN(UNIT=1, FILE=outfile,STATUS="NEW",ACTION="WRITE")
+        write(1,'(A)')"CID,ICELL,JCELl,NEEDL,TROPI,BROAD,SHRUB,HERB,CROP"
+        do j=1,g%ny
+            do i=1,g%nx
+                write(1,'(i4,",",i4,",",i4,",",5(f7.4,","),f7.4)') i+j,i,j,CTS(i,j,1,1:6)
+            enddo
+        enddo
+        CLOSE(UNIT=1)
+
+    else if ( trim(out_fmt) == 'NetCDF' .or. trim(out_fmt) == 'netcdf' .or. trim(out_fmt) == 'NETCDF') then
+
+         outfile='CT3.nc'
+         !!"Improved" version:
+         !allocate(var_list(nvars))  
+         !allocate(var_unit(nvars))  
+         !allocate(var_desc(nvars))  
+         !var_list=(/ 'NEEDL      ','TROPI      ','BROAD      ','SHRUB      ','GRASS      ','CROP       '/)
+         !var_desc=(/  "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","grass fraction         ","crop fraction          "/) 
+         !var_unit=spread("nondimension",1,nvars)
  
-    !! Create the NetCDF file
-    !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+         !! Create the NetCDF file
+         !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
 
-    !!Abro NetCDF outFile
-    !call check(nf90_open(outFile, nf90_write, ncid       ))
-    !do i=1,nvars
-    !   call check(nf90_inq_varid(ncid,TRIM(var_list(i)),var_id))
-    !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1,i)  ))        
-    !end do
+         !!Abro NetCDF outFile
+         !call check(nf90_open(outFile, nf90_write, ncid       ))
+         !do i=1,nvars
+         !   call check(nf90_inq_varid(ncid,TRIM(var_list(i)),var_id))
+         !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1,i)  ))        
+         !end do
 
-    !!TFLAG:
-    !call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-    !call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
-    !call check(nf90_close(ncid))
-    !!Cierro NetCDF outFile
-    !call check(nf90_close(ncid))
-
-!**********************************************************!
-          !MEGAN OLDER VERSION:
-          ! Create the NetCDF file
-          !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
-          call check(nf90_create(outFile, NF90_CLOBBER, ncid))
-              ! Defino dimensiones
-              call check(nf90_def_dim(ncid, "TSTEP"    , nvars  , tstep_dim_id     ))
-              call check(nf90_def_dim(ncid, "DATE-TIME", 2      , date_time_dim_id ))
-              call check(nf90_def_dim(ncid, "COL"      , g%nx   , col_dim_id       ))
-              call check(nf90_def_dim(ncid, "ROW"      , g%ny   , row_dim_id       ))
-              call check(nf90_def_dim(ncid, "LAY"      , 1      , lay_dim_id       ))
-              call check(nf90_def_dim(ncid, "VAR"      , 1      , var_dim_id       ))
-              !Defino variables
-              call check(nf90_def_var(ncid,"TFLAG",NF90_INT      , [date_time_dim_id,var_dim_id,tstep_dim_id], var_id))
-              call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
-              call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
-              call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
-          
-              call check(nf90_def_var(ncid, 'CTS' , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id))
-              call check(nf90_put_att(ncid, var_id,"long_name", "CTS" ))
-              call check(nf90_put_att(ncid, var_id,"units"    , "nondimension    " ))
-              call check(nf90_put_att(ncid, var_id,"var_desc" , "" ))
-          
-              ! Defino attributos
-              call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: $Id: init3" ))
-              call check(nf90_put_att(ncid, nf90_global,"EXEC_ID", "????????????????"   ))
-              call check(nf90_put_att(ncid, nf90_global,"FTYPE"  , 1                    ))
-              call check(nf90_put_att(ncid, nf90_global,"SDATE"  , 0000000              ))!stat_date (int)
-              call check(nf90_put_att(ncid, nf90_global,"STIME"  , 000000               ))
-              call check(nf90_put_att(ncid, nf90_global,"WDATE"  , 2023001              ))
-              call check(nf90_put_att(ncid, nf90_global,"WTIME"  , 000000               ))
-              call check(nf90_put_att(ncid, nf90_global,"CDATE"  , 2023001              ))
-              call check(nf90_put_att(ncid, nf90_global,"CTIME"  , 000000               ))
-              call check(nf90_put_att(ncid, nf90_global,"TSTEP"  , 10000                ))
-              call check(nf90_put_att(ncid, nf90_global,"NTHIK"  , 1                    ))!no sé que es.
-              call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
-              call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
-              call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
-              call check(nf90_put_att(ncid, nf90_global,"NVARS"  , 1                    ))!son 6, pero apiladas en la dimension temporal
-              call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
-              call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
-              call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
-              call check(nf90_put_att(ncid, nf90_global,"P_GAM"  , p%gam                ))
-              call check(nf90_put_att(ncid, nf90_global,"XCENT"  , p%xcent              ))
-              call check(nf90_put_att(ncid, nf90_global,"YCENT"  , p%ycent              ))
-              call check(nf90_put_att(ncid, nf90_global,"XORIG"  , g%xmin               ))
-              call check(nf90_put_att(ncid, nf90_global,"YORIG"  , g%ymin               ))
-              call check(nf90_put_att(ncid, nf90_global,"XCELL"  , g%dx                 ))
-              call check(nf90_put_att(ncid, nf90_global,"YCELL"  , g%dy                 ))
-              call check(nf90_put_att(ncid, nf90_global,"VGTYP"  , -9999                ))!no sé que es.
-              call check(nf90_put_att(ncid, nf90_global,"VGTOP"  , 0.                   ))!no sé que es.
-              call check(nf90_put_att(ncid, nf90_global,"VGLVLS" , [0., 0.]             ))!no sé que es.
-              call check(nf90_put_att(ncid, nf90_global,"GDNAM"  , g%gName              ))
-              call check(nf90_put_att(ncid, nf90_global,"UPNAM"  , "prepMegan4cmaq.exe" ))!no sé que es.
-              !call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, 16, "CTS"))
-              call check(nf90_put_att(ncid, nf90_global,"VAR-LIST","CTS"))
-              call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
-              call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
-          call check(nf90_enddef(ncid))
-          !End NetCDF define mode
-          call check(nf90_open(outFile, nf90_write, ncid       ))
-            !CTS
-            call check(nf90_inq_varid(ncid,"CTS" ,var_id))
-            call check(nf90_put_var(ncid, var_id, CTS(:,:,:,1:nvars) ))
-            !!TFLAG:
-            call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-            call check(nf90_put_var(ncid, var_id, spread(spread((/0000000,000000/),2,nvars),2,1) ))
-            call check(nf90_put_var(ncid, var_id, reshape([0, 0, 0, 10000, 0, 20000, 0, 30000, 0, 40000, 0, 50000], [2,1,6])))
-          call check(nf90_close(ncid))
-!**********************************************************!
-
+         !!TFLAG:
+         !call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+         !call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
+         !call check(nf90_close(ncid))
+         !!Cierro NetCDF outFile
+         !call check(nf90_close(ncid))
+         !**********************************************************!
+               !MEGAN OLDER VERSION:
+               ! Create the NetCDF file
+               !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+               call check(nf90_create(outFile, NF90_CLOBBER, ncid))
+                   ! Defino dimensiones
+                   call check(nf90_def_dim(ncid, "TSTEP"    , nvars  , tstep_dim_id     ))
+                   call check(nf90_def_dim(ncid, "DATE-TIME", 2      , date_time_dim_id ))
+                   call check(nf90_def_dim(ncid, "COL"      , g%nx   , col_dim_id       ))
+                   call check(nf90_def_dim(ncid, "ROW"      , g%ny   , row_dim_id       ))
+                   call check(nf90_def_dim(ncid, "LAY"      , 1      , lay_dim_id       ))
+                   call check(nf90_def_dim(ncid, "VAR"      , 1      , var_dim_id       ))
+                   !Defino variables
+                   call check(nf90_def_var(ncid,"TFLAG",NF90_INT      , [date_time_dim_id,var_dim_id,tstep_dim_id], var_id))
+                   call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
+                   call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
+                   call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
+               
+                   call check(nf90_def_var(ncid, 'CTS' , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id))
+                   call check(nf90_put_att(ncid, var_id,"long_name", "CTS" ))
+                   call check(nf90_put_att(ncid, var_id,"units"    , "nondimension    " ))
+                   call check(nf90_put_att(ncid, var_id,"var_desc" , "" ))
+               
+                   ! Defino attributos
+                   call check(nf90_put_att(ncid, nf90_global,"IOAPI_VERSION", "ioapi-3.2: $Id: init3" ))
+                   call check(nf90_put_att(ncid, nf90_global,"EXEC_ID", "????????????????"   ))
+                   call check(nf90_put_att(ncid, nf90_global,"FTYPE"  , 1                    ))
+                   call check(nf90_put_att(ncid, nf90_global,"SDATE"  , 0000000              ))!stat_date (int)
+                   call check(nf90_put_att(ncid, nf90_global,"STIME"  , 000000               ))
+                   call check(nf90_put_att(ncid, nf90_global,"WDATE"  , 2023001              ))
+                   call check(nf90_put_att(ncid, nf90_global,"WTIME"  , 000000               ))
+                   call check(nf90_put_att(ncid, nf90_global,"CDATE"  , 2023001              ))
+                   call check(nf90_put_att(ncid, nf90_global,"CTIME"  , 000000               ))
+                   call check(nf90_put_att(ncid, nf90_global,"TSTEP"  , 10000                ))
+                   call check(nf90_put_att(ncid, nf90_global,"NTHIK"  , 1                    ))!no sé que es.
+                   call check(nf90_put_att(ncid, nf90_global,"NCOLS"  , g%nx                 ))
+                   call check(nf90_put_att(ncid, nf90_global,"NROWS"  , g%ny                 ))
+                   call check(nf90_put_att(ncid, nf90_global,"NLAYS"  , 1                    ))!grid%nz
+                   call check(nf90_put_att(ncid, nf90_global,"NVARS"  , 1                    ))!son 6, pero apiladas en la dimension temporal
+                   call check(nf90_put_att(ncid, nf90_global,"GDTYP"  , p%typ                ))
+                   call check(nf90_put_att(ncid, nf90_global,"P_ALP"  , p%alp                ))
+                   call check(nf90_put_att(ncid, nf90_global,"P_BET"  , p%bet                ))
+                   call check(nf90_put_att(ncid, nf90_global,"P_GAM"  , p%gam                ))
+                   call check(nf90_put_att(ncid, nf90_global,"XCENT"  , p%xcent              ))
+                   call check(nf90_put_att(ncid, nf90_global,"YCENT"  , p%ycent              ))
+                   call check(nf90_put_att(ncid, nf90_global,"XORIG"  , g%xmin               ))
+                   call check(nf90_put_att(ncid, nf90_global,"YORIG"  , g%ymin               ))
+                   call check(nf90_put_att(ncid, nf90_global,"XCELL"  , g%dx                 ))
+                   call check(nf90_put_att(ncid, nf90_global,"YCELL"  , g%dy                 ))
+                   call check(nf90_put_att(ncid, nf90_global,"VGTYP"  , -9999                ))!no sé que es.
+                   call check(nf90_put_att(ncid, nf90_global,"VGTOP"  , 0.                   ))!no sé que es.
+                   call check(nf90_put_att(ncid, nf90_global,"VGLVLS" , [0., 0.]             ))!no sé que es.
+                   call check(nf90_put_att(ncid, nf90_global,"GDNAM"  , g%gName              ))
+                   call check(nf90_put_att(ncid, nf90_global,"UPNAM"  , "prepMegan4cmaq.exe" ))!no sé que es.
+                   !call check(nf90_put_att_any(ncid, nf90_global,"VAR-LIST",nf90_char, 16, "CTS"))
+                   call check(nf90_put_att(ncid, nf90_global,"VAR-LIST","CTS"))
+                   call check(nf90_put_att(ncid, nf90_global,"FILEDESC" , "MEGAN input file"   ))
+                   call check(nf90_put_att(ncid, nf90_global,"HISTORY"  , ""                   ))
+               call check(nf90_enddef(ncid))
+               !End NetCDF define mode
+               call check(nf90_open(outFile, nf90_write, ncid       ))
+                 !CTS
+                 call check(nf90_inq_varid(ncid,"CTS" ,var_id))
+                 call check(nf90_put_var(ncid, var_id, CTS(:,:,:,1:nvars) ))
+                 !!TFLAG:
+                 call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+                 call check(nf90_put_var(ncid, var_id, spread(spread((/0000000,000000/),2,nvars),2,1) ))
+                 call check(nf90_put_var(ncid, var_id, reshape([0, 0, 0, 10000, 0, 20000, 0, 30000, 0, 40000, 0, 50000], [2,1,6])))
+               call check(nf90_close(ncid))
+         !**********************************************************!
+    endif
     deallocate(CTS)            !Libero memoria
  
  end subroutine build_CT3
@@ -213,7 +234,12 @@ contains
     
     print*,"Building MEGAN_LAI file ..."
     
-    outfile='LAI3.nc'
+
+    !Idea for implementing 8-day LAIv: just read global_var (NVARS) and depending of this read & write the output.
+    !
+    !call check(nf90_open(laiv_file,nf90_read, ncid) )
+    !call check(nf90_get_att(ncid, NF90_GLOBAL, "NVARS", nvars) )
+    !call check(nf90_close(ncid))
     nvars=12
  
     allocate(var_list(nvars))  
@@ -223,6 +249,8 @@ contains
  
     !Levanto netcdf input files
     do k=1,nvars
+        write(var_list(k),'(A,I0.1)') "LAI",k
+        write(var_desc(k),'(A,I0.1)') "LAI",k
         write(kk,'(I0.2)') k
         print*,trim(laiv_file)//kk//".nc"
         LAIv(:,:,k)=interpolate(p,g,inp_file=laiv_file,varname="laiv"//kk, method="bilinear") 
@@ -230,26 +258,43 @@ contains
     where (LAIv < 0.0 )
             LAIv=0.0
     endwhere
-    var_list=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
-    var_desc=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
-    var_unit=spread("nondimension",1,nvars)
- 
-    !Creo NetCDF file
-    call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
-    
-    !Abro NetCDF outFile
-    call check(nf90_open(outFile, nf90_write, ncid       ))
-      do k=1, nvars       
-        write(kk,'(I0.2)') k
-        call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
-        call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
-      enddo
-      !TFLAG:
-      call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
-      call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
-    !Cierro NetCDF outFile
-    call check(nf90_close( ncid ))
- 
+    !var_list=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
+    !var_desc=(/"LAI01","LAI02","LAI03","LAI04","LAI05","LAI06","LAI07","LAI08","LAI09","LAI10","LAI11","LAI12" /)
+    !var_unit=spread("nondimension",1,nvars)
+
+    if ( trim(out_fmt) == 'csv' .or. trim(out_fmt) == 'CSV' ) then
+                                                                                                            
+        outfile='LAI3.csv'
+        
+        OPEN(UNIT=1, FILE=outfile,STATUS="NEW",ACTION="WRITE")
+        write(1,'(A)') "CELL_ID,X,Y,LAT,LONG,LAI01,LAI02,..."
+        !"CELL_ID,X,Y,LAT,LONG,LAI01,LAI02,....,"
+        do j=1,g%ny
+            do i=1,g%nx
+                write(1,'(i4,",",i4,",",i4,",",11(f7.4,","),f7.4)') i+j,i,j,LAIv(i,j,:)
+            enddo
+        enddo
+        CLOSE(UNIT=1)
+                                                                                                            
+    else if ( trim(out_fmt) == 'NetCDF' .or. trim(out_fmt) == 'netcdf' .or. trim(out_fmt) == 'NETCDF') then
+        outfile='LAI3.nc'
+
+        !Creo NetCDF file
+        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+        
+        !Abro NetCDF outFile
+        call check(nf90_open(outFile, nf90_write, ncid       ))
+          do k=1, nvars       
+            write(kk,'(I0.2)') k
+            call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
+            call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
+          enddo
+          !TFLAG:
+          call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+          call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
+        !Cierro NetCDF outFile
+        call check(nf90_close( ncid ))
+    endif
  end subroutine
  
   !----------------------------------

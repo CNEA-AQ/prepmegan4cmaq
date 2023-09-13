@@ -1,5 +1,5 @@
 &control
-griddesc_file='./GRIDDESC'
+griddesc_file='./GRIDDESC',
      gridname='LCC_SEC_TEST', !'MERC_TEST'!'LCC_TAN_TEST',!
 
 ecotypes_file='./input/veg_Ecotypes.nc',
@@ -10,5 +10,12 @@ growtype_file='./input/veg_GrowthFormFracions.nc',
 landtype_file='./input/soil_landtype.nc',
    nitro_file='./input/soil_nitro.nc',
 
- GtEcoEF_file="./db/GtEFbyEcotype.csv"      !Emission factor of each GT grouped by Ecotype
+ GtEcoEF_file="./db/GtEFbyEcotype.csv",    !Emission factor of each GT grouped by Ecotype
+
+     run_CTS=.true.,
+     !run_LAI=.false.,
+     run_EFS=.false.,
+     run_BDSNP=.false.,
+
+     out_fmt='csv',          !Output format: ('CMAQ' 'CAMx' 'MEGAN')
 /

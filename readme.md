@@ -68,6 +68,10 @@ Please feel free to contact the developer if you have any issues or suggestions.
    - [x] Roboust GRIDDESC reader.
    - [x] coordinate transformations functions
    - [x] interpolation subroutines (bilinear, bicubic, average, mode, median)
- + [ ] BDNP (Fert variable) support.
+ + [x] Add variables in the namelist to decide which sectons should be run.
+ + [~] Add support for 8-day LAIv
+ + [~] Add output format for CAMx and MEGAN (standalone)
+ + [ ] BDNP: Fert variable support.
+ + [ ] Add an overall error checker at the end of the run.
+ + [ ] Review and validate polar stereographic transformations.
  + [ ] Add some scripts to download and prepare some input files (LAI, Fert, Nitro, etc.)
-
