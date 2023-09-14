@@ -22,7 +22,7 @@ contains
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
     integer :: k
     integer :: nvars
-    character(800) :: var_list_string
+    character(6000) :: var_list_string
  
     nvars=size(var_list)
     write(var_list_string,*) var_list                !este es un global attr importante.

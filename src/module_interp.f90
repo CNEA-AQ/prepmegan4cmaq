@@ -35,7 +35,7 @@ function interpolate(p,g,inp_file,varname,method)       result(img2)
 
  integer :: scale_x,scale_y
 
- print*,"  Interpolando: "//trim(inp_file)//"..."
+ print*,"  Interpolando: "//trim(inp_file)//":"//trim(varname)//"..."
  ! Asumo que estoy trabajando con grillas regulares (dx/dy =cte.).    
  ! Asumo que lat y lon estan ordenados de forma creciente.
 

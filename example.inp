@@ -6,16 +6,16 @@ ecotypes_file='./input/veg_Ecotypes.nc',
 growtype_file='./input/veg_GrowthFormFracions.nc',
     laiv_file='./input/veg_LAIv.nc',
  climate_file='./input/soil_climate.nc',
-   ferti_file='./input/soil_fert.nc',
 landtype_file='./input/soil_landtype.nc',
    nitro_file='./input/soil_nitro.nc',
+    fert_file='./input/soil_fert.nc',
 
  GtEcoEF_file="./db/GtEFbyEcotype.csv",    !Emission factor of each GT grouped by Ecotype
 
-     run_CTS=.true.,
-     !run_LAI=.false.,
-     run_EFS=.false.,
-     run_BDSNP=.false.,
+     !run_CTS=.false.,
+     !run_LAI=.true.,
+     !run_EFS=.false.,
+     !run_BDSNP=.false.,
 
-     out_fmt='csv',          !Output format: ('CMAQ' 'CAMx' 'MEGAN')
+     out_fmt='netcdf', !'csv', !           !Output format: 'netcdf'/'csv' 
 /
