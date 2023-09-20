@@ -520,6 +520,9 @@ contains
            call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
            call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
         enddo
+        !TFLAG:
+        call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
+        call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
         call check(nf90_close( ncid ))
       endif
  end subroutine BDSNP_LAND
@@ -549,7 +552,8 @@ contains
                                                                             
     !Levanto netcdf input files
     do k=1,nvars
-        write(var_list(k),'(A,I0.1)') "NITROGEN",k
+        write(var_list(k),'(A,I0.2)') "NITROGEN",k
+        write(var_desc(k),'(A,I0.2)') "NITROGEN",k
         write(kk,'(I0.2)') k
         NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk, method="bilinear")
     enddo
