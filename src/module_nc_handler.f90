@@ -12,12 +12,12 @@ contains
    end if
  end subroutine check
 
- subroutine createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+ subroutine createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
     implicit none
     type(grid_type) , intent(in) :: g
     type(proj_type) , intent(in) :: p
     character(len=10), intent(in) :: outFile
-    character(len=16) :: var_list(:),var_unit(:)
+    character(len=16) :: var_list(:),var_unit(:),var_dtyp(:)
     character(len=25) :: var_desc(:)
     integer :: ncid,tstep_dim_id,date_time_dim_id,col_dim_id,row_dim_id,lay_dim_id,var_dim_id,var_id
     integer :: k
@@ -41,7 +41,11 @@ contains
         call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
         call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
         do k=1, nvars
-          call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
+          if ( trim(var_dtyp(k)) == "INT" ) then
+                call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_INT  , [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
+          else if ( trim(var_dtyp(k)) == "FLOAT" ) then
+                call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 
+          endif
           call check(nf90_put_att(ncid, var_id,"long_name",      var_list(k)  ))
           call check(nf90_put_att(ncid, var_id,"units"    , trim(var_unit(k)) ))
           call check(nf90_put_att(ncid, var_id,"var_desc" , trim(var_desc(k)) ))

@@ -80,7 +80,7 @@ function interpolate(p,g,inp_file,varname,method)       result(img2)
            i2=MIN( GC%nx, i1+scale_x                                   )
            j2=MIN( GC%ny, j1+scale_y                                   )
 
-           if ( i1 > 1 .and. i2 < GC%nx .and. j1 > 1 .and. j2 < GC%ny ) then
+           if ( i1 >= 1 .and. i2 <= GC%nx .and. j1 >=1 .and. j2 <= GC%ny ) then
                !! Mode                                                                
                img2(i,j)=MODE(INT(img1(i1:i2,j1:j2)))                        !mode
            else

@@ -125,9 +125,10 @@ contains
          !var_list=(/ 'NEEDL      ','TROPI      ','BROAD      ','SHRUB      ','GRASS      ','CROP       '/)
          !var_desc=(/  "needle tree fraction   ","tropical tree fraction ","broadleaf tree fraction", "shrub fraction         ","grass fraction         ","crop fraction          "/) 
          !var_unit=spread("nondimension",1,nvars)
+         !var_dtyp=spread("FLOAT",1,nvars)
  
          !! Create the NetCDF file
-         !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+         !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
 
          !!Abro NetCDF outFile
          !call check(nf90_open(outFile, nf90_write, ncid       ))
@@ -145,7 +146,6 @@ contains
          !**********************************************************!
                !MEGAN OLDER VERSION:
                ! Create the NetCDF file
-               !call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
                call check(nf90_create(outFile, NF90_CLOBBER, ncid))
                    ! Defino dimensiones
                    call check(nf90_def_dim(ncid, "TSTEP"    , nvars  , tstep_dim_id     ))
@@ -226,7 +226,7 @@ contains
     type(proj_type) ,intent(in) :: p
     character(len=200) :: laiv_file
     real, allocatable :: LAIv(:,:,:)
-    character(len=16),allocatable :: var_list(:),var_unit(:)
+    character(len=16),allocatable :: var_list(:),var_unit(:),var_dtyp(:)
     character(len=25),allocatable :: var_desc(:)
     character(len=16) :: outfile
     integer ::var_id,ncid
@@ -253,12 +253,14 @@ contains
     allocate(var_list(nvars))  
     allocate(var_unit(nvars))  
     allocate(var_desc(nvars))  
+    allocate(var_dtyp(nvars))  
     allocate(LAIv(g%nx,g%ny,nvars))  
  
     !Levanto netcdf input files
     do k=1,nvars
         write(var_list(k),'(A,I0.2)') "LAI",k
         write(var_desc(k),'(A,I0.2)') "LAI",k
+        var_dtyp(k)="FLOAT"
         write(kk,'(I0.2)') k
         LAIv(:,:,k)=interpolate(p,g,inp_file=laiv_file,varname="laiv"//kk, method="bilinear") 
     enddo
@@ -286,7 +288,7 @@ contains
         outfile='LAI3.nc'
 
         !Creo NetCDF file
-        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
         
         !Abro NetCDF outFile
         call check(nf90_open(outFile, nf90_write, ncid       ))
@@ -322,7 +324,7 @@ contains
 
       character(len=5) :: GTYP_LIST(4) ! crop, tree, grass, shrub
       character(len=5) :: GtID
-      character(len=16), allocatable :: var_list(:),var_unit(:) !19 EF + 4 LDF
+      character(len=16), allocatable :: var_list(:),var_unit(:),var_dtyp(:) !19 EF + 4 LDF
       character(len=25), allocatable :: var_desc(:) !19 EF + 4 LDF
       integer :: nvars
       real  :: EF(23)
@@ -378,10 +380,11 @@ contains
        enddo !each row.
      close(1)
 
-     allocate(var_list(23),var_desc(23),var_unit(23))
+     allocate(var_list(23),var_desc(23),var_unit(23),var_dtyp(23))
      var_list=(/"EF_ISOP   ","EF_MBO    ","EF_MT_PINE","EF_MT_ACYC","EF_MT_CAMP","EF_MT_SABI","EF_MT_AROM","EF_NO     ","EF_SQT_HR ","EF_SQT_LR ", "EF_MEOH   ","EF_ACTO   ","EF_ETOH   ","EF_ACID   ","EF_LVOC   ","EF_OXPROD ","EF_STRESS ","EF_OTHER  ","EF_CO     ", "LDF03     ", "LDF04     ", "LDF05     ", "LDF06     " /)
      var_desc=var_list
      var_unit=spread("nanomol/m^2/s",1,nvars)
+     var_dtyp=spread("FLOAT",1,nvars)
    
     if ( trim(out_fmt) == 'csv' .or. trim(out_fmt) == 'CSV' ) then
         outFileEF='EF.csv'
@@ -420,7 +423,7 @@ contains
     else if ( trim(out_fmt) == 'NetCDF' .or. trim(out_fmt) == 'netcdf' .or. trim(out_fmt) == 'NETCDF') then
         outFileEF='EF.nc'
         ! Create the NetCDF file
-        call createNetCDF(outFileEF,p,g,var_list(1:19),var_unit(1:19),var_desc(1:19))
+        call createNetCDF(outFileEF,p,g,var_list(1:19),var_unit(1:19),var_desc(1:19),var_dtyp(1:19))
         !Abro NetCDF outFile
         call check(nf90_open(outFileEF, nf90_write, ncid       ))
          do k=1, 19       
@@ -435,7 +438,7 @@ contains
 
         outFileLDF='LDF.nc'
         ! Create the NetCDF file
-        call createNetCDF(outFileLDF,p,g,var_list(20:23),var_unit(20:23),var_desc(20:23))
+        call createNetCDF(outFileLDF,p,g,var_list(20:23),var_unit(20:23),var_desc(20:23),var_dtyp(20:23))
         !Abro NetCDF outFile
         call check(nf90_open(outFileLDF, nf90_write, ncid       ))
          do k=20, 23       
@@ -463,7 +466,7 @@ contains
      type(proj_type) ,intent(in) :: p
      character(len=200),intent(in) :: climate_file,lt_file
      real, allocatable :: LANDGRID(:,:,:)
-     character(len=16),allocatable :: var_list(:),var_unit(:)
+     character(len=16),allocatable :: var_list(:),var_unit(:),var_dtyp(:)
      character(len=25),allocatable :: var_desc(:)
      integer :: var_id,ncid
      integer :: nvars
@@ -479,13 +482,15 @@ contains
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
 
+     LANDGRID(:,:,3) = 1  
      LANDGRID(:,:,1) = interpolate(p,g,climate_file, varname="arid"    , method="mode")
      LANDGRID(:,:,2) = interpolate(p,g,climate_file, varname="non_arid", method="mode")
      LANDGRID(:,:,3) = interpolate(p,g,     lt_file, varname="landtype", method="mode")
      
      var_list=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
-     var_unit=spread('1 or 0      ',1,nvars) 
+     var_unit=(/'1 or 0      ','1 or 0      ','nondimension' /) 
      var_desc=(/ 'ARID    ', 'NONARID ', 'LANDTYPE' /)
+     var_dtyp=spread('INT',1,nvars) 
  
      if ( trim(out_fmt) == 'csv' .or. trim(out_fmt) == 'CSV' ) then
             outFile_arid='arid.csv'
@@ -512,7 +517,7 @@ contains
      else if ( trim(out_fmt) == 'NetCDF' .or. trim(out_fmt) == 'netcdf' .or. trim(out_fmt) == 'NETCDF') then
         outfile='LAND.nc'!(/"ARID.nc    ", "LANDTYPE.nc", "NONARID.nc "/) !
         ! Create the NetCDF file
-        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+        call createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
 
         !Abro NetCDF outFile
         call check(nf90_open(outFile, nf90_write, ncid       ))
@@ -534,7 +539,7 @@ contains
     character(len=200),intent(in) :: nitro_file
     real, allocatable :: NITRO(:,:,:)
     character(len=16) :: outfile
-    character(len=16),allocatable :: var_list(:),var_unit(:)
+    character(len=16),allocatable :: var_list(:),var_unit(:),var_dtyp(:)
     character(len=25),allocatable :: var_desc(:)
     integer :: var_id,ncid
     integer :: nvars
@@ -548,12 +553,14 @@ contains
     allocate(var_list(nvars))
     allocate(var_unit(nvars))
     allocate(var_desc(nvars))
+    allocate(var_dtyp(nvars))
     allocate(NITRO(g%nx,g%ny,nvars))  
                                                                             
     !Levanto netcdf input files
     do k=1,nvars
         write(var_list(k),'(A,I0.2)') "NITROGEN",k
         write(var_desc(k),'(A,I0.2)') "NITROGEN",k
+        var_dtyp(k)="FLOAT"
         write(kk,'(I0.2)') k
         NITRO(:,:,k)  = interpolate(p,g,nitro_file, varname="nitro"//kk, method="bilinear")
     enddo
@@ -582,7 +589,7 @@ contains
     else if ( trim(out_fmt) == 'NetCDF' .or. trim(out_fmt) == 'netcdf' .or. trim(out_fmt) == 'NETCDF') then
       outfile='NDEP.nc'
       ! Create the NetCDF file
-      call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+      call createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
                                                                  
       !Abro NetCDF outFile
       call check(nf90_open(outFile, nf90_write, ncid       ))
@@ -604,7 +611,7 @@ contains
      character(len=200),intent(in) :: fert_file
      real, allocatable :: FERT(:,:,:)
      character(len=16) :: outfile
-     character(len=16),allocatable :: var_list(:),var_unit(:)
+     character(len=16),allocatable :: var_list(:),var_unit(:),var_dtyp(:)
      character(len=25),allocatable :: var_desc(:)
      integer :: var_id,ncid
      integer :: nvars
@@ -617,18 +624,21 @@ contains
      allocate(var_list(nvars))
      allocate(var_unit(nvars))
      allocate(var_desc(nvars))
+     allocate(var_dtyp(nvars))
      allocate(FERT(g%nx,g%ny,nvars))  
                                                                              
      !Levanto netcdf input files
      do k=1,nvars
          write(var_list(k),'(A,I0.3)') "FERT",k
          write(kk,'(I0.3)') k
+         var_dtyp(k)="FLOAT"
          FERT(:,:,k)  = interpolate(p,g,fert_file, varname="fert"//kk, method="bilinear")
      enddo
      where (FERT< 0.0 )
             FERT=0.0
      endwhere
-     FERT=FERT*1E+6 !convert mg/m3 --> ng/m3 
+     !FERT=FERT*1E+6 !convert mg/m3 --> ng/m3 
+     FERT=FERT*1E-6 !convert mg/m3 --> ng/m3 
      var_unit = spread( "ng/m2/s         ",1,nvars)
      var_desc=spread("monthly average total nitrogen deposition",1,nvars) 
      
@@ -651,7 +661,7 @@ contains
 
        outfile='FERT.nc'
        ! Create the NetCDF file
-       call createNetCDF(outFile,p,g,var_list,var_unit,var_desc)
+       call createNetCDF(outFile,p,g,var_list,var_unit,var_desc,var_dtyp)
                                                                   
        !Abro NetCDF outFile
        call check(nf90_open(outFile, nf90_write, ncid       ))
