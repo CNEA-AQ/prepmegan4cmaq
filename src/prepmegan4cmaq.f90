@@ -36,19 +36,13 @@ program prepmegan4cmaq
   call read_GRIDDESC(griddesc_file,gridname, proj, grid)
                                                                        
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
-  if (run_CTS) then 
-     call build_CT3(grid,proj,growtype_file)
-  endif
+  if (run_CTS) call build_CT3(grid,proj,growtype_file)
   
   !`MEGAN_LAI` (Leaf Area Index).
-  if (run_LAI) then
-     call build_LAIv(grid,proj,laiv_file)
-  endif
+  if (run_LAI) call build_LAIv(grid,proj,laiv_file)
 
   !`MEGAN_EFS` (Emission Factors) & `MEGAN_LDF` (*Light Dependence Factirs*) 
-  if (run_EFS ) then
-     call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
-  endif
+  if (run_EFS ) call build_EFS_LDF(grid,proj,GtEcoEF_file,ecotypes_file,growtype_file)
   
   !BDSNP: !call BDSNP_AFILE() !int Arid (0/1) &  call BDSNP_NAFILE()  !int Non-Arid (0/1) &  call BDSNP_LFILE()  !int Land types (1:24)
   if (run_BDSNP) then
