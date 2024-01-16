@@ -51,6 +51,8 @@ contains
     else if ( p%typ == 7 ) then  !equatorial mercator
        p%p1=COS(p%alp*deg2rad)   !k0
 
+    else if ( p%typ == 1 ) then
+       print*, "sistema de coordenadas latlon!"
     else
         print*, "codigo de proyección invalido:",p%typ,"."; stop
     end if

@@ -40,6 +40,10 @@ contains
         call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
         call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
         call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
+        !Coordinate variables:
+        call check(nf90_def_var(ncid,"lon",NF90_FLOAT      , [col_dim_id,row_dim_id], var_id))
+        call check(nf90_def_var(ncid,"lat",NF90_FLOAT      , [col_dim_id,row_dim_id], var_id))
+
         do k=1, nvars
           if ( trim(var_dtyp(k)) == "INT" ) then
                 call check(nf90_def_var(ncid, trim(var_list(k)) , NF90_INT  , [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id)) 

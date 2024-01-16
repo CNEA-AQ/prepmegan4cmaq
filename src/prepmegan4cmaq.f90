@@ -18,6 +18,8 @@ program prepmegan4cmaq
 
   integer :: status,iostat
   integer :: i,j,k
+  !coordinates
+  real, allocatable, save  :: longitude(:,:), latitude(:,:)
 
   !character(len=17) :: start_date,end_date
   character(200)    :: griddesc_file,gridname,ecotypes_file,growtype_file,laiv_file,climate_file,fert_file,landtype_file,nitro_file,GtEcoEF_file
@@ -34,7 +36,15 @@ program prepmegan4cmaq
 
   !Leo GRIDDESC:
   call read_GRIDDESC(griddesc_file,gridname, proj, grid)
-                                                                       
+   
+  !Compute coordinates lat lon for all grid cells                 
+  allocate(latitude(grid%nx,grid%ny));allocate(longitude(grid%nx,grid%ny))
+  do j=1,grid%ny
+  do i=1,grid%nx                                                                                            
+     call xy2ll(proj,grid%xmin+grid%dx*i,grid%ymin+grid%dy*j,longitude(i,j),latitude(i,j)) 
+  enddo
+  enddo
+                             
   !`MEGAN_CTS` (*Canopy Type Fractions*) 
   if (run_CTS) call build_CT3(grid,proj,growtype_file)
   
@@ -130,7 +140,9 @@ contains
          !   call check(nf90_inq_varid(ncid,TRIM(var_list(i)),var_id))
          !   call check(nf90_put_var(ncid, var_id, CTS(:,:,1,i)  ))        
          !end do
-
+         !!Coordinates
+         !call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+         !call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
          !!TFLAG:
          !call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
          !call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
@@ -153,7 +165,10 @@ contains
                    call check(nf90_put_att(ncid, var_id, "units"      , "<YYYYDDD,HHMMSS>" ))
                    call check(nf90_put_att(ncid, var_id, "long_name"  , "TFLAG           " ))
                    call check(nf90_put_att(ncid, var_id, "var_desc"   , "Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS                                "))
-               
+                   
+                   call check(nf90_def_var(ncid,"lon",NF90_FLOAT, [col_dim_id,row_dim_id], var_id))
+                   call check(nf90_def_var(ncid,"lat",NF90_FLOAT, [col_dim_id,row_dim_id], var_id))
+
                    call check(nf90_def_var(ncid, 'CTS' , NF90_FLOAT, [col_dim_id,row_dim_id,lay_dim_id,tstep_dim_id], var_id))
                    call check(nf90_put_att(ncid, var_id,"long_name", "CTS" ))
                    call check(nf90_put_att(ncid, var_id,"units"    , "nondimension    " ))
@@ -200,6 +215,9 @@ contains
                  !CTS
                  call check(nf90_inq_varid(ncid,"CTS" ,var_id))
                  call check(nf90_put_var(ncid, var_id, CTS(:,:,:,1:nvars) ))
+                 !!Coordinates
+                 call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+                 call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
                  !!TFLAG:
                  call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
                  call check(nf90_put_var(ncid, var_id, spread(spread((/0000000,000000/),2,nvars),2,1) ))
@@ -291,6 +309,9 @@ contains
             call check(nf90_inq_varid(ncid,"LAI"//kk ,var_id))               
             call check(nf90_put_var(ncid, var_id, LAIv(:,:,k)/1000.0 ))
           enddo
+          !!Coordinates
+          call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+          call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
           !TFLAG:
           call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
           call check(nf90_put_var(ncid, var_id, (/0000000,000000 /) ))
@@ -424,6 +445,9 @@ contains
            call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
            call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k)))
          enddo
+         !!Coordinates
+         call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+         call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
          !TFLAG:
          call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
          call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,19) ))
@@ -439,6 +463,9 @@ contains
            call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
            call check(nf90_put_var(ncid, var_id, OUTGRID(:,:,k)))
          enddo
+         !!Coordinates
+         call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+         call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
          !TFLAG:
          call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
          !call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,19) ))
@@ -519,6 +546,10 @@ contains
            call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
            call check(nf90_put_var(ncid, var_id, LANDGRID(:,:,k)))
         enddo
+        !!Coordinates
+        call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+        call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
+
         !TFLAG:
         call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
         call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
@@ -591,6 +622,9 @@ contains
         call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
         call check(nf90_put_var(ncid, var_id, NITRO(:,:,k)))
       enddo
+      !!Coordinates
+      call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+      call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
       !TFLAG:
       call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
       call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))
@@ -663,6 +697,9 @@ contains
          call check(nf90_inq_varid(ncid,var_list(k) ,var_id ))
          call check(nf90_put_var(ncid, var_id, FERT(:,:,k)))
        enddo
+       !!Coordinates
+       call check(nf90_inq_varid(ncid,"lon" ,var_id)); call check(nf90_put_var(ncid, var_id, longitude ) )
+       call check(nf90_inq_varid(ncid,"lat" ,var_id)); call check(nf90_put_var(ncid, var_id, latitude  ) )
        !TFLAG:
        call check(nf90_inq_varid(ncid, "TFLAG"    , var_id))
        call check(nf90_put_var(ncid, var_id, spread((/0000000,000000 /),2,nvars) ))

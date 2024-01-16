@@ -40,6 +40,8 @@ module PROJ_mod
         call xy2ll_stere(p,x,y,lat,lon)
      else if ( p%typ == 7 ) then  !equatorial mercator
         call xy2ll_merc(p,x,y,lon,lat)
+     else if ( p%typ == 1 ) then  !latlon
+        lon=x;lat=y               !no transformation needed       
      else
         print*, "codigo de proyección invalido:",p%typ,"."; stop
      end if
@@ -56,6 +58,8 @@ module PROJ_mod
           call ll2xy_stere(p,lon,lat,x,y)
        else if ( p%typ == 7 ) then  !Equatorial Mercator
           call ll2xy_merc(p,lon,lat,x,y)
+       else if ( p%typ == 1 ) then  !latlon
+          x=lon;y=lat               !no transformation needed
        else
           print*, "codigo de proyección invalido:",p%typ,"."; stop
        end if                             
